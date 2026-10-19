@@ -1,0 +1,10 @@
+{
+  "name": "neon-nebula-pinball",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NEON NEBULA, a neon space pinball game in one HTML file",
+  "scripts": {
+    "build": "node tools/build.js",
+    "test": "node tests/run-all.js"
+  }
+}
