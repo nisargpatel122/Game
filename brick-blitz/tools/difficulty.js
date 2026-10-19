@@ -6,7 +6,8 @@
  *   lost  - balls lost per run
  *   time  - seconds to clear (winning runs)
  *   score - one 0-100 difficulty number (higher = harder)
- * Usage: node tools/difficulty.js [n | n-m ...] [--runs=24] [--json] [--skill=0.6]
+ * --seed=K plays with different luck than the tuner (tools/tune.js) used, to double-check it.
+ * Usage: node tools/difficulty.js [n | n-m ...] [--runs=24] [--seed=0] [--json] [--skill=0.85]
  */
 'use strict';
 const Bot = require('../js/bot.js');
@@ -14,7 +15,7 @@ const { LEVELS } = require('../js/levels.js');
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const a = args.find(x => x.startsWith(`--${name}=`)); return a ? +a.split('=')[1] : def; };
-const RUNS = opt('runs', 24);
+const RUNS = opt('runs', 24), SEED = opt('seed', 0);
 const asJson = args.includes('--json');
 const want = new Set();
 for (const a of args.filter(x => !x.startsWith('--'))) {
@@ -23,11 +24,11 @@ for (const a of args.filter(x => !x.startsWith('--'))) {
 }
 const levels = want.size ? LEVELS.filter(l => want.has(l.n)) : LEVELS;
 const skill = {};
-if (args.some(a => a.startsWith('--skill='))) skill.err = opt('skill', 0.6);
+if (args.some(a => a.startsWith('--skill='))) skill.err = opt('skill', 0.85);
 
 function measure(level) {
   const runs = [];
-  for (let s = 1; s <= RUNS; s++) runs.push(Bot.play(level, { seed: s * 7 + level.n * 1009, skill }));
+  for (let s = 1; s <= RUNS; s++) runs.push(Bot.play(level, { seed: s * 7 + level.n * 1009 + SEED * 100003, skill }));
   const won = runs.filter(r => r.won);
   const win = won.length / RUNS;
   const p3 = runs.filter(r => r.won && r.lost === 0).length / RUNS;

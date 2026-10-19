@@ -1,6 +1,6 @@
 /* Brick Blitz service worker: caches every game file so it runs offline.
  * Bump VERSION whenever any file changes so phones pick up the update. */
-const VERSION = 'brickblitz-v1';
+const VERSION = 'brickblitz-v2';
 const FILES = [
   './',
   './index.html',
