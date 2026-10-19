@@ -369,8 +369,22 @@
   }
 
   // ---------------- main loop ----------------
+  // Draw at the screen's full sharpness (the S24 Ultra is ~2.8x), but step down
+  // the resolution if the phone can't keep a smooth frame rate.
+  let dprCap = 3, slowFrames = 0, timedFrames = 0;
+  function watchFrameRate(interval) {
+    if (G.screen !== 'play' || G.paused || interval > 0.25) return;
+    timedFrames++;
+    if (interval > 1 / 40) slowFrames++;
+    if (timedFrames >= 120) {
+      if (slowFrames > 60 && dprCap > 1.5) { dprCap = dprCap > 2 ? 2 : 1.5; resize(); }
+      slowFrames = 0; timedFrames = 0;
+    }
+  }
+
   let last = performance.now();
   function frame(now) {
+    watchFrameRate((now - last) / 1000);
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (!G.paused) {
@@ -550,7 +564,7 @@
   // ---------------- layout ----------------
   function resize() {
     const W = window.innerWidth, H = window.innerHeight;
-    renderer.resize(W, H, Math.min(2, window.devicePixelRatio || 1));
+    renderer.resize(W, H, Math.min(dprCap, window.devicePixelRatio || 1));
     const portrait = H > W * 1.05;
     $('rotate').classList.toggle('hidden', !portrait);
     if (portrait && G.screen === 'play') pause(true);
