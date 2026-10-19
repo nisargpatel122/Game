@@ -16,9 +16,11 @@
   function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } }
   Sfx.soundOn = save.sound; Sfx.musicOn = save.music;
 
-  const levelSave = (id) => save.levels[id] || { stars: 0, score: 0 };
-  const worldStars = (w) => w.levels.reduce((s, l) => s + levelSave(l.id).stars, 0);
-  const unlocked = (w, i) => i === 0 || levelSave(w.levels[i - 1].id).stars > 0;
+  // Rebuilt levels carry a revision so old stars from a previous design don't stick to them.
+  const levelKey = (l) => l.id + (l.rev ? '#' + l.rev : '');
+  const levelSave = (l) => save.levels[levelKey(l)] || { stars: 0, score: 0 };
+  const worldStars = (w) => w.levels.reduce((s, l) => s + levelSave(l).stars, 0);
+  const unlocked = (w, i) => i === 0 || levelSave(w.levels[i - 1]).stars > 0;
 
   // ---------------- game state ----------------
   const G = {
@@ -49,21 +51,29 @@
         Sfx.play('birdHit', d);
         fx.feathers(d.type, d.x, d.y, Math.min(8, 2 + Math.round(d.speed / 4)));
         break;
-      case 'hit': Sfx.play('hit_' + d.mat, { vol: 0.4 + d.strength * 0.6 }); break;
+      case 'hit':
+        Sfx.play('hit_' + d.mat, { vol: 0.4 + d.strength * 0.6 });
+        if (d.strength > 0.35) fx.impactDust(d.x, d.y, d.strength, d.mat);
+        break;
       case 'break':
-        fx.debris(d.mat, d.x, d.y, d.w, d.h, d.vx, d.vy);
+        fx.debris(d.mat, d.x, d.y, d.w, d.h, d.angle, d.vx, d.vy);
         Sfx.play('break_' + d.mat);
         if (d.pts) fx.text(d.x, d.y, String(d.pts), MAT_TEXT[d.mat], 16);
+        comboBump(d.x, d.y);
         break;
       case 'pigDie':
         fx.pigPop(d.x, d.y, d.r);
         fx.text(d.x, d.y + d.r + 0.3, String(d.pts), '#a6f05a', 26);
         Sfx.play('pigDie'); Sfx.vibrate(25);
+        comboBump(d.x, d.y);
+        if (G.sim && G.sim.objective.type !== 'demolish' && G.sim.pigs.length === 0) slowMo(0.3, 1.1);
         break;
       case 'pigHurt': Sfx.play('pigHurt'); break;
       case 'explode':
         fx.explosion(d.x, d.y, d.r);
         Sfx.play('explode'); Sfx.vibrate(70);
+        G.booms = (G.booms || []).filter(t => G.time - t < 0.5).concat(G.time);
+        if (G.booms.length >= 2) slowMo(0.45, 0.6);
         break;
       case 'poof':
         fx.smoke(d.x, d.y, 0.7, 'rgba(255,255,255,', 6);
@@ -73,12 +83,36 @@
       case 'nextBird': startLoad(); break;
       case 'win':
         G.ending = { won: true, t: 0, spare: d.spare, popped: 0 };
+        if (G.sim.demolishPct() >= 90) setTimeout(() => { fx.banner('TOTAL DESTRUCTION!', '#ffd23a', 40); Sfx.play('combo', { n: 30 }); }, 250);
         break;
       case 'lose':
         G.ending = { won: false, t: 0, spare: 0, popped: 0 };
         setTimeout(() => Sfx.play('pigLaugh'), 300);
         break;
     }
+  }
+
+  // ---------------- combos & slow motion ----------------
+  const COMBOS = [[5, 'Smash!', '#ffd23a'], [10, 'Crushing!', '#ff9a2a'], [16, 'Demolition!', '#ff6a3a'], [24, 'TOTAL CHAOS!', '#ff4a8a'], [34, 'UNSTOPPABLE!', '#c86bff']];
+  const combo = { n: 0, t: 0, best: 0 };
+
+  function comboBump() {
+    if (combo.t <= 0) combo.n = 0;
+    combo.n++;
+    combo.t = 0.8;
+    combo.best = Math.max(combo.best, combo.n);
+    const tier = COMBOS.filter(c => c[0] === combo.n)[0] || (combo.n > 34 && combo.n % 10 === 4 ? COMBOS[4] : null);
+    if (tier) {
+      fx.banner(`${tier[1]} x${combo.n}`, tier[2], 30 + Math.min(16, combo.n / 2));
+      Sfx.play('combo', { n: combo.n });
+      Sfx.vibrate(15 + Math.min(40, combo.n * 2));
+    }
+    if (combo.n === 8) Sfx.play('rumble');
+    if (combo.n === 12) slowMo(0.5, 0.55);
+  }
+
+  function slowMo(scale, secs) {
+    if (!G.slow || scale <= G.slow.scale || G.slow.t <= 0) G.slow = { scale, t: secs };
   }
 
   // ---------------- level lifecycle ----------------
@@ -91,11 +125,12 @@
     G.theme = themeOf(wi);
     G.sim = new Sim(G.level, { onEvent: onSimEvent });
     G.aim = null; G.ending = null; G.lastTrail = []; G.shownScore = 0; G.hiddenQueue = 0;
+    G.slow = null; G.timeScale = 1; combo.n = 0; combo.t = 0; combo.best = 0;
     G.camMode = 'auto'; G.paused = false; G.acc = 0;
     fx.clear();
     snapCamera();
     showScreen('play');
-    $('best').textContent = 'Best ' + levelSave(G.level.id).score.toLocaleString();
+    $('best').textContent = 'Best ' + levelSave(G.level).score.toLocaleString();
     const demolish = G.sim.objective.type === 'demolish';
     $('goal').classList.toggle('hidden', !demolish);
     if (demolish) $('goal-mark').style.left = G.sim.objective.pct + '%';
@@ -390,14 +425,19 @@
     last = now;
     if (!G.paused) {
       G.time += dt;
+      combo.t -= dt;
+      let target = 1;
+      if (G.slow && G.slow.t > 0) { G.slow.t -= dt; target = G.slow.scale; }
+      G.timeScale = (G.timeScale || 1) + (target - (G.timeScale || 1)) * Math.min(1, dt * (target < 1 ? 14 : 4));
+      const sdt = dt * G.timeScale;
       if (G.sim) {
-        G.acc += dt;
+        G.acc += sdt;
         let n = 0;
         while (G.acc >= STEP && n < 4) { G.sim.step(); G.acc -= STEP; n++; }
         if (n === 4) G.acc = 0;
       }
       if (G.load) { G.load.t += dt; if (G.load.t >= G.load.dur) G.load = null; }
-      fx.update(dt, G.sim);
+      fx.update(sdt, G.sim);
       updateEnding(dt);
       updateCamera(dt);
       updateHud(dt);
@@ -479,7 +519,7 @@
     let page = levelPage[G.worldIdx];
     if (page == null) {
       // open on the page with the next level to beat
-      let next = w.levels.findIndex((l, i) => unlocked(w, i) && !levelSave(l.id).stars);
+      let next = w.levels.findIndex((l, i) => unlocked(w, i) && !levelSave(l).stars);
       if (next < 0) next = 0;
       page = Math.floor(next / size);
     }
@@ -496,7 +536,7 @@
       const open = unlocked(w, li);
       btn.className = 'level-btn' + (open ? '' : ' locked');
       if (open) {
-        const st = levelSave(l.id).stars;
+        const st = levelSave(l).stars;
         btn.innerHTML = `<span>${li + 1}</span><div class="lstars">${[0, 1, 2].map(i => STAR_SVG.replace('<svg', `<svg class="${i < st ? 'on' : ''}"`)).join('')}</div>`;
         btn.addEventListener('click', () => { Sfx.unlock(); Sfx.play('click'); startLevel(G.worldIdx, li); });
       } else {
@@ -533,12 +573,12 @@
   });
 
   function showResult(won) {
-    const sim = G.sim, id = G.level.id;
-    const prev = levelSave(id);
+    const sim = G.sim;
+    const prev = levelSave(G.level);
     const stars = won ? sim.stars : 0;
     const newBest = won && sim.score > prev.score;
     if (won) {
-      save.levels[id] = { stars: Math.max(prev.stars, stars), score: Math.max(prev.score, sim.score) };
+      save.levels[levelKey(G.level)] = { stars: Math.max(prev.stars, stars), score: Math.max(prev.score, sim.score) };
       persist();
     }
     $('r-title').textContent = won ? 'Level Cleared!' : 'Level Failed';
@@ -546,9 +586,10 @@
     $('r-score').textContent = sim.score.toLocaleString();
     $('r-new').classList.toggle('hidden', !newBest);
     let sub = '';
-    if (sim.objective.type === 'demolish') sub = `Wrecked ${sim.demolishPct()}% (goal ${sim.objective.pct}%)`;
-    else if (!won) sub = sim.pigs.length === 1 ? '1 pig survived. Try again!' : `${sim.pigs.length} pigs survived. Try again!`;
-    else if (sim.spareBirds) sub = `${sim.spareBirds} spare bird${sim.spareBirds > 1 ? 's' : ''} × 10,000 bonus`;
+    const wreck = `Destruction ${sim.demolishPct()}%` + (combo.best >= 5 ? `  ·  Best combo x${combo.best}` : '');
+    if (sim.objective.type === 'demolish') sub = `Wrecked ${sim.demolishPct()}% (goal ${sim.objective.pct}%)` + (combo.best >= 5 ? `  ·  Best combo x${combo.best}` : '');
+    else if (!won) sub = (sim.pigs.length === 1 ? '1 pig survived. Try again!' : `${sim.pigs.length} pigs survived. Try again!`);
+    else sub = (sim.spareBirds ? `${sim.spareBirds} spare bird${sim.spareBirds > 1 ? 's' : ''} × 10,000  ·  ` : '') + wreck;
     $('r-sub').textContent = sub;
     const starEls = $('r-stars').querySelectorAll('.star');
     starEls.forEach(s => s.classList.remove('on'));

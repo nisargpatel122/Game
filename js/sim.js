@@ -17,7 +17,7 @@
   const STEP = 1 / 60;
   const SLING_HEIGHT = 2.3;
   const DAMAGE_SPEED = 1.5; // approach speed (m/s) below which contacts do no damage
-  const COLLAPSE_DAMAGE = 0.45; // blocks hurt each other less than birds hurt them
+  const COLLAPSE_DAMAGE = 0.6; // blocks hurt each other less than birds hurt them
 
   const MATERIALS = {
     glass: { density: 1.2, friction: 0.35, restitution: 0.05, hp: 4, score: 300 },
@@ -100,7 +100,7 @@
       this._build();
       this._computeBounds();
       // Let structures settle before the player sees them, with damage off.
-      for (let i = 0; i < 120; i++) this._physicsStep();
+      if (!opts.noSettle) for (let i = 0; i < 120; i++) this._physicsStep();
       this.noDamage = false;
       this.toDestroy.length = 0;
       this.explosions.length = 0;
@@ -129,8 +129,8 @@
         b.setUserData({ kind: 'planet', planet: p });
         p.body = b;
       }
-      for (const d of L.blocks || []) this._addBlock(d);
-      for (const d of L.pigs || []) this._addPig(d);
+      (L.blocks || []).forEach((d, i) => { this._addBlock(d).src = i; });
+      (L.pigs || []).forEach((d, i) => { this._addPig(d).src = i; });
     }
 
     _addTerrain(t) {
@@ -356,8 +356,19 @@
     _solidAt(x, y) {
       if (!this.space && this.level.ground !== false && y < 0) return true;
       for (const p of this.planets) if (len(x - p.x, y - p.y) < p.r) return true;
+      for (const t of this.terrain) {
+        const pts = t.pts;
+        let inside = true;
+        for (let i = 0; i < pts.length && inside; i++) {
+          const a = pts[i], b = pts[(i + 1) % pts.length];
+          if ((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) < 0) inside = false;
+        }
+        if (inside) return true;
+      }
       return false;
     }
+
+    solidAt(x, y) { return this._solidAt(x, y); }
 
     // ---------- contacts & damage ----------
 
@@ -643,6 +654,43 @@
     }
 
     demolishPct() { return this._demolishPct(); }
+
+    // Capture the state between shots so tools can try many shots from the same spot.
+    snapshot() {
+      if (this.state !== 'aim') throw new Error('snapshot only between shots');
+      const grab = (e) => {
+        const b = e.body, p = b.getPosition(), v = b.getLinearVelocity();
+        return { src: e.src, x: p.x, y: p.y, a: b.getAngle(), vx: v.x, vy: v.y, w: b.getAngularVelocity(), hp: e.hp, awake: b.isAwake() };
+      };
+      return {
+        blocks: this.blocks.map(grab), pigs: this.pigs.map(grab),
+        score: this.score, birdIndex: this.birdIndex, t: this.t,
+        blocksTotal: this.blocksTotal, pigsTotal: this.pigsTotal, blockScoreTotal: this.blockScoreTotal,
+      };
+    }
+
+    static restore(level, snap, opts) {
+      const sim = new Sim(level, Object.assign({}, opts, { noSettle: true }));
+      const apply = (list, saved) => {
+        const bySrc = new Map(saved.map(s => [s.src, s]));
+        for (const e of list.slice()) {
+          const s = bySrc.get(e.src);
+          if (!s) { list.splice(list.indexOf(e), 1); sim.world.destroyBody(e.body); continue; }
+          e.body.setTransform(Vec2(s.x, s.y), s.a);
+          e.body.setLinearVelocity(Vec2(s.vx, s.vy));
+          e.body.setAngularVelocity(s.w);
+          e.body.setAwake(s.awake);
+          e.hp = s.hp;
+        }
+      };
+      apply(sim.blocks, snap.blocks);
+      apply(sim.pigs, snap.pigs);
+      Object.assign(sim, {
+        score: snap.score, birdIndex: snap.birdIndex, t: snap.t,
+        blocksTotal: snap.blocksTotal, pigsTotal: snap.pigsTotal, blockScoreTotal: snap.blockScoreTotal,
+      });
+      return sim;
+    }
   }
 
   Sim.MATERIALS = MATERIALS;

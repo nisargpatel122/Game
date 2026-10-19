@@ -11,7 +11,11 @@
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
         this.ctx = new AC();
-        this.master = this.ctx.createGain(); this.master.gain.value = 0.8; this.master.connect(this.ctx.destination);
+        // A compressor keeps big pile-ups loud but clean.
+        const comp = this.ctx.createDynamicsCompressor();
+        comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.2;
+        comp.connect(this.ctx.destination);
+        this.master = this.ctx.createGain(); this.master.gain.value = 0.85; this.master.connect(comp);
         this.sfxGain = this.ctx.createGain(); this.sfxGain.connect(this.master);
         this.musicGain = this.ctx.createGain(); this.musicGain.gain.value = 0.16; this.musicGain.connect(this.master);
         const len = this.ctx.sampleRate;
@@ -75,6 +79,13 @@
       if (!this.ctx || !this.soundOn) return;
       o = o || {};
       const v = o.vol == null ? 1 : o.vol;
+      // Don't stack dozens of identical crashes in the same instant.
+      const now = this.ctx.currentTime;
+      this.last = this.last || {};
+      if (name.startsWith('break_') || name.startsWith('hit_')) {
+        if (now - (this.last[name] || 0) < 0.035) return;
+        this.last[name] = now;
+      }
       switch (name) {
         case 'stretch': this.tone(140, 0.25, 'sawtooth', 0.04 * v, 260); this.hiss(0.2, 'bandpass', 900, 0.05, 3); break;
         case 'launch':
@@ -122,6 +133,16 @@
         case 'click': this.tone(900, 0.05, 'triangle', 0.15, 600); break;
         case 'star': this.tone(880 * Math.pow(1.26, o.i || 0), 0.3, 'triangle', 0.25); this.tone(1760 * Math.pow(1.26, o.i || 0), 0.25, 'sine', 0.1, null, 0.03); break;
         case 'bonus': this.tone(1200, 0.08, 'square', 0.06, 1800); break;
+        case 'combo': {
+          const base = 520 * Math.pow(1.06, Math.min(24, o.n || 5));
+          [1, 1.26, 1.5, 2].forEach((m, i) => this.tone(base * m, 0.16, 'square', 0.07, null, i * 0.05));
+          this.tone(base * 2, 0.35, 'triangle', 0.12, base * 3, 0.2);
+          break;
+        }
+        case 'rumble':
+          this.hiss(1.4, 'lowpass', 260, 0.9, 0.7, 60);
+          this.tone(55, 1.0, 'sine', 0.35, 35);
+          break;
         case 'win':
           [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.25, 'triangle', 0.25, null, i * 0.11));
           this.tone(1046, 0.6, 'sine', 0.15, null, 0.45);

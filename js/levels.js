@@ -114,6 +114,27 @@
         }
         return o.crenels === false ? y : b.crenels(o.crenels || m, x, y, w);
       },
+      // running-bond brick wall (small pieces that crumble nicely), centred on x
+      brick(m, x, y, cols, rows, s) {
+        s = s || S;
+        const W = cols * 2 * s, x0 = x - W / 2;
+        for (let r = 0; r < rows; r++) {
+          const yy = y + r * s, mm = typeof m === 'function' ? m(r) : m;
+          if (r % 2 === 0) {
+            for (let c = 0; c < cols; c++) b.box(mm, x0 + (c + 0.5) * 2 * s, yy, 2 * s, s);
+          } else {
+            b.box(mm, x0 + s / 2, yy, s, s);
+            for (let c = 0; c < cols - 1; c++) b.box(mm, x0 + s + (c + 0.5) * 2 * s, yy, 2 * s, s);
+            b.box(mm, x0 + W - s / 2, yy, s, s);
+          }
+        }
+        return y + rows * s;
+      },
+      // a stone ball held between two small blocks, ready to roll
+      cup(x, y, ball, side) {
+        b.cube(side || 'wood', x - 0.65, y, S); b.cube(side || 'wood', x + 0.65, y, S);
+        return b.ball(ball || 'stone', x, y, 0.42);
+      },
       // ground features
       mesa(x1, x2, h, slope) {
         slope = slope == null ? 1.6 : slope;
@@ -226,294 +247,369 @@
       b.tower(23, 0, [{ m: 'stone', pig: 'small' }, { m: 'wood', pig: 'small' }]);
     }),
 
-    // ---------- 1-11 to 1-40: bigger, more complex forts ----------
-    level({ id: '1-11', name: 'Row Houses', birds: ['red', 'red', 'yellow'] }, (b) => {
-      b.house(15, 0, { m: 'wood', pig: 'small' });
-      b.house(18, 0, { m: 'wood', top: 'glass', pig: 'small' });
-      b.house(21, 0, { m: 'glass', top: 'wood', pig: 'medium' });
-      b.house(24, 0, { m: 'wood', w: XL, pig: 'medium' });
-    }),
+  ];
 
-    level({ id: '1-12', name: 'Greenhouse', birds: ['blue', 'blue', 'blue', 'red'] }, (b) => {
-      const y = b.building(19, 0, 3, [
-        { m: 'glass', pigs: ['small', 'small', 'small'] },
-        { m: 'glass', pigs: [null, 'small', null] },
+  // ---------- 1-11 to 1-40: big layered forts ----------
+  // Each design lists its birds in a sensible order (what the fort is made of decides who
+  // goes first). ISLAND_BIRDS sets the play order, smallest forts first, and how many of
+  // those birds each level gets; the counts are tuned with tools/difficulty.js so the
+  // levels get steadily harder.
+  const ISLAND_DESIGNS = {
+    'Wooden Village': { pref: ['yellow', 'red', 'yellow', 'red', 'red', 'yellow'], build: (b) => {
+      b.house(13.8, 0, { m: 'wood', pig: 'small' });
+      const y = b.building(17.2, 0, 2, [{ m: 'wood', pigs: ['small', null] }, { m: 'wood', pigs: [null, 'medium'] }]);
+      b.tri('wood', 16.32, y, 1.4, 0.7); b.tri('wood', 18.08, y, 1.4, 0.7);
+      b.cube('tnt', 19.75, 0);
+      b.house(21.4, 0, { m: 'wood', pig: 'small' });
+      b.brick('wood', 24, 0, 2, 3);
+      b.pig('medium', 25.9, 0);
+    } },
+    'Glass Gardens': { pref: ['blue', 'red', 'blue', 'yellow', 'red', 'blue'], build: (b) => {
+      b.brick('wood', 15, 0, 2, 2);
+      const y = b.building(19.6, 0, 4, [
+        { m: 'glass', post: 'wood', pigs: ['small', null, 'small', null] },
+        { m: 'glass', pigs: [null, 'medium', null, 'small'] },
       ]);
-      b.tri('glass', 19, y, 3 * L, 1.1);
-      b.frame('wood', 24, 0); b.pig('small', 24, 0);
-    }),
-
-    level({ id: '1-13', name: 'Bunker Line', birds: ['black', 'red', 'yellow'] }, (b) => {
-      b.bunker(15.5, 0, { pig: 'medium', roof: 'wood' });
-      const y = b.bunker(19.5, 0, { pig: 'helmet' });
-      b.pig('small', 19.5, y);
-      b.bunker(23.5, 0, { m: 'wood', pig: 'medium' });
-    }),
-
-    level({ id: '1-14', name: 'Tall Order', birds: ['yellow', 'red', 'blue'] }, (b) => {
-      b.tower(16.5, 0, [{ m: 'stone', roof: 'wood' }, { m: 'wood', pig: 'small' }, { m: 'glass' }, { m: 'wood', pig: 'small' }, { m: 'glass', pig: 'small' }]);
-      b.cube('stone', 18.25, 0);
-      b.building(21, 0, 2, [{ m: 'wood', post: 'stone', pigs: ['medium', null] }, { m: 'glass', pigs: [null, 'small'] }, { m: 'wood' }]);
-    }),
-
-    level({ id: '1-15', name: 'Mesa Fort', birds: ['yellow', 'black', 'red', 'blue'] }, (b) => {
-      const h = b.mesa(16, 25, 2.5);
-      b.building(19.2, h, 2, [{ m: 'stone', roof: 'wood', pigs: ['small', 'medium'] }, { m: 'wood', pigs: ['small', null] }]);
-      b.keep(23, h, { m: 'wood', floors: 1, pigs: ['helmet'] });
+      for (const x of [16.96, 18.72, 20.48, 22.24]) b.tri('glass', x, y, 1.4, 0.7);
+      b.brick('wood', 24.6, 0, 1, 3);
+      b.pig('small', 25.9, 0);
+    } },
+    'Hill Village': { pref: ['yellow', 'black', 'blue', 'red', 'yellow', 'red'], build: (b) => {
+      const h = b.mesa(15.5, 26, 2.5);
+      b.house(17, h, { m: 'wood', pig: 'small' });
+      const y = b.building(20.4, h, 2, [
+        { m: 'stone', roof: 'wood', pigs: ['small', 'medium'] },
+        { m: 'wood', pigs: ['small', null] },
+        { m: 'glass', pigs: [null, 'small'] },
+      ]);
+      b.tri('wood', 20.4, y, 2 * L, 1.0);
+      b.cube('tnt', 23, h);
+      b.house(24.6, h, { m: 'glass', top: 'wood', pig: 'small' });
       b.pig('small', 13, 0);
-    }),
-
-    level({ id: '1-16', name: 'Rolling Stones', birds: ['red', 'yellow', 'red', 'blue'] }, (b) => {
-      const y = b.bays(18.5, 0, 3, { m: 'wood', pigs: ['small', 'medium', 'small'] });
-      for (const x of [16.74, 18.5, 20.26]) {
-        b.cube('wood', x - 0.65, y, S); b.cube('wood', x + 0.65, y, S);
-        b.ball('stone', x, y, 0.42);
-      }
-      b.frame('glass', 24, 0, XL); b.pig('large', 24, 0);
-    }),
-
-    level({ id: '1-17', name: 'Gatehouse', birds: ['black', 'red', 'yellow', 'red'] }, (b) => {
-      b.keep(15.5, 0, { m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] });
-      const y = b.bays(19, 0, 2, { m: 'wood', pigs: ['small', 'small'] });
-      b.bays(19, y, 2, { m: 'glass', pigs: [null, 'medium'] });
-      b.keep(22.5, 0, { m: 'stone', roof: 'wood', pigs: ['small', 'helmet'] });
-    }),
-
-    level({ id: '1-18', name: 'Ice Palace', birds: ['blue', 'blue', 'white'] }, (b) => {
+    } },
+    'Market Square': { pref: ['red', 'yellow', 'blue', 'black', 'red', 'yellow'], build: (b) => {
+      b.house(13.8, 0, { m: 'wood', pig: 'small' });
+      b.house(16.2, 0, { m: 'glass', top: 'wood', pig: 'small' });
+      const f = b.wall('stone', 19, 0, 2, 1);
+      b.cup(19, f, 'stone', 'stone');
+      b.cube('tnt', 20.4, 0);
+      b.house(21.8, 0, { m: 'wood', pig: 'small' });
+      const y = b.building(25, 0, 2, [{ m: 'wood', pigs: ['small', 'medium'] }, { m: 'wood', pigs: [null, 'small'] }]);
+      b.tri('wood', 25, y, 2 * L, 1.0);
+    } },
+    'Brick Barracks': { pref: ['yellow', 'black', 'red', 'yellow', 'red', 'black'], build: (b) => {
+      b.brick('wood', 14.5, 0, 2, 4);
       const y = b.building(19, 0, 3, [
-        { m: 'glass', post: 'wood', pigs: ['small', 'medium', 'small'] },
-        { n: 2, m: 'glass', pigs: ['small', 'small'] },
-        { n: 1, m: 'glass', pigs: ['small'] },
-      ]);
-      b.tri('glass', 19, y, L, 1.0);
-      b.tri('glass', 16.75, 1.98, 0.7, 0.6); b.tri('glass', 21.25, 1.98, 0.7, 0.6);
-    }),
-
-    level({ id: '1-19', name: 'TNT Warehouse', birds: ['red', 'yellow', 'red'] }, (b) => {
-      const y = b.building(18.5, 0, 3, [{ m: 'wood', pigs: ['small', null, 'small'] }, { m: 'wood', pigs: [null, 'medium', null] }]);
-      b.cube('tnt', 18.5, 0);
-      b.cube('tnt', 16.74, y); b.cube('tnt', 20.26, y);
-      const t = b.bunker(24.2, 0, { m: 'wood', pig: 'small' });
-      b.cube('tnt', 24.2, t);
-    }),
-
-    level({ id: '1-20', name: 'Hilltop Keep', birds: ['big', 'black', 'yellow', 'red'] }, (b) => {
-      const h = b.mesa(17.5, 25.5, 3);
-      b.keep(21.5, h, { m: 'stone', w: XL, h: 2.2, roof: 'wood', pigs: ['helmet', 'king'] });
-      b.house(18.6, h, { m: 'wood', pig: 'small' });
-      b.house(24.4, h, { m: 'glass', top: 'wood', pig: 'small' });
-    }),
-
-    level({ id: '1-21', name: 'Twin Bridges', birds: ['yellow', 'blue', 'red', 'black'] }, (b) => {
-      const y = b.tower(15.5, 0, [{ m: 'wood', pig: 'small' }, { m: 'wood' }, { m: 'stone', roof: 'wood' }]);
-      b.tower(22.5, 0, [{ m: 'wood', pig: 'small' }, { m: 'wood' }, { m: 'stone', roof: 'wood' }]);
-      const d = b.plank('wood', 19, y, 7.0);
-      b.frame('glass', 17.8, d); b.pig('small', 17.8, d);
-      b.frame('glass', 20.2, d); b.pig('small', 20.2, d);
-      b.bunker(19, 0, { m: 'wood', s: S, rows: 3, pig: 'medium' });
-    }),
-
-    level({ id: '1-22', name: 'Fortress Walls', birds: ['black', 'big', 'red', 'yellow'] }, (b) => {
-      const w = b.wall('stone', 15.5, 0, 2, 3);
-      b.crenels('stone', 15.5, w, 2 * M);
-      b.building(20.5, 0, 3, [
         { m: 'wood', post: 'stone', pigs: ['small', 'helmet', 'small'] },
-        { m: 'glass', pigs: [null, 'small', null] },
-      ]);
-      b.stack('stone', 25, 0, 2);
-      b.pig('medium', 26.3, 0);
-    }),
-
-    level({ id: '1-23', name: 'Pagoda', birds: ['red', 'yellow', 'blue', 'white'] }, (b) => {
-      const y = b.building(19, 0, 3, [
-        { m: 'wood', pigs: ['small', 'medium', 'small'] },
-        { n: 2, m: 'wood', pigs: ['small', 'small'] },
-        { n: 1, m: 'wood', pigs: ['medium'] },
-      ]);
-      b.tri('wood', 19, y, L, 1.0);
-      b.tri('glass', 16.75, 1.98, 0.7, 0.6); b.tri('glass', 21.25, 1.98, 0.7, 0.6);
-      b.tri('glass', 17.65, 3.96, 0.7, 0.6); b.tri('glass', 20.35, 3.96, 0.7, 0.6);
-    }),
-
-    level({ id: '1-24', name: 'Cliffside', birds: ['yellow', 'red', 'black', 'red'] }, (b) => {
-      const h = b.cliff(20, 29.5, 4);
-      b.building(23.5, h, 2, [{ m: 'wood', pigs: ['small', 'medium'] }, { m: 'glass', pigs: ['small', null] }]);
-      b.keep(27.5, h, { m: 'stone', floors: 1, roof: 'wood', pigs: ['helmet'] });
-      b.frame('wood', 18, 0); b.pig('small', 18, 0);
-    }),
-
-    level({ id: '1-25', name: 'Floating Isles', birds: ['red', 'yellow', 'blue', 'red'] }, (b) => {
-      const a = b.rock(14, 17, 2.6, 3.2);
-      b.frame('wood', 15.5, a); b.pig('small', 15.5, a);
-      const c = b.rock(19, 22.5, 5.4, 6.0);
-      b.house(20.75, c, { m: 'glass', top: 'wood', pig: 'small' });
-      b.frame('glass', 20.75, 0); b.pig('medium', 20.75, 0);
-      const e = b.rock(24.5, 27.5, 1.8, 2.4);
-      b.bunker(26, e, { m: 'wood', s: S, rows: 3, pig: 'small' });
-    }),
-
-    level({ id: '1-26', name: 'Stonehenge', birds: ['big', 'black', 'red', 'yellow'] }, (b) => {
-      for (const [x, pig] of [[15.5, 'medium'], [19.5, 'helmet'], [23.5, 'medium']]) {
-        const y = b.frame('stone', x, 0, XL);
-        b.pig(pig, x, 0);
-        if (x === 19.5) { b.frame('wood', x, y); b.pig('small', x, y); }
-        else { b.cube('stone', x - 0.65, y, S); b.cube('stone', x + 0.65, y, S); b.ball('stone', x, y, 0.42); }
-      }
-    }),
-
-    level({ id: '1-27', name: 'Domino Effect', birds: ['red', 'red', 'yellow'] }, (b) => {
-      for (const x of [14, 15.2, 16.4, 17.6, 18.8]) b.box('wood', x, 0, T, 2.2);
-      b.building(21.8, 0, 2, [{ m: 'glass', pigs: ['small', 'small'] }]);
-      b.keep(25.5, 0, { m: 'stone', floors: 1, roof: 'wood', pigs: ['helmet'] });
-    }),
-
-    level({ id: '1-28', name: 'Pig City', birds: ['yellow', 'black', 'blue', 'red', 'red'] }, (b) => {
-      b.tower(14.8, 0, [{ m: 'wood', pig: 'small' }, { m: 'wood', pig: 'small' }, { m: 'wood' }]);
-      b.building(18.6, 0, 2, [
-        { m: 'glass', pigs: ['small', null] }, { m: 'glass', pigs: [null, 'small'] },
-        { m: 'glass' }, { m: 'glass', pigs: ['small', null] },
-      ]);
-      b.cube('tnt', 21.3, 0);
-      b.building(24.2, 0, 2, [{ m: 'stone', roof: 'wood', pigs: ['helmet', 'medium'] }, { m: 'wood', pigs: [null, 'small'] }]);
-    }),
-
-    level({ id: '1-29', name: 'The Vault', birds: ['black', 'big', 'red'] }, (b) => {
-      for (const [x, pig] of [[17.5, 'helmet'], [22.5, 'medium']]) {
-        b.wall('stone', x, 0, 4, 1);
-        b.stack('stone', x - 1.5 * M, M, 2); b.stack('stone', x + 1.5 * M, M, 2);
-        b.pig(pig, x, M);
-        const y = b.plank('stone', x, 3 * M, 4 * M);
-        b.cube('tnt', x, y);
-        if (x > 20) { b.cube('wood', x - 1.2, y); b.cube('wood', x + 1.2, y); b.plank('wood', x, y + M, 3.3); b.pig('small', x, y + M + T); }
-      }
-    }),
-
-    level({ id: '1-30', name: 'Siege Castle', birds: ['red', 'black', 'yellow', 'blue', 'big'] }, (b) => {
-      b.keep(14.5, 0, { m: 'stone', roof: 'wood', pigs: ['small', 'helmet'] });
-      b.stack('stone', 16.6, 0, 3);
-      const y = b.building(20.2, 0, 3, [
-        { m: 'stone', roof: 'wood', pigs: ['medium', 'helmet', 'medium'] },
         { m: 'wood', pigs: [null, 'small', null] },
       ]);
-      const k = b.frame('wood', 20.2, y, XL, 2.2);
-      b.pig('king', 20.2, y);
-      b.crenels('wood', 20.2, k, XL);
-      b.stack('stone', 23.8, 0, 3);
-      b.keep(25.9, 0, { m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] });
-    }),
-
-    level({ id: '1-31', name: 'Skyline', birds: ['yellow', 'yellow', 'black', 'red', 'blue'] }, (b) => {
-      b.tower(14.5, 0, [{ m: 'wood', pig: 'small' }, { m: 'wood' }, { m: 'wood', pig: 'small' }]);
-      b.tower(17.6, 0, [{ m: 'glass' }, { m: 'wood', pig: 'small' }, { m: 'glass' }, { m: 'wood' }, { m: 'glass', pig: 'small' }]);
-      b.building(21.3, 0, 2, [
-        { m: 'stone', roof: 'wood', pigs: ['medium', null] }, { m: 'wood', pigs: [null, 'small'] },
-        { m: 'glass', pigs: ['small', null] }, { m: 'wood' },
+      b.tri('wood', 19, y, 3 * L, 1.2);
+      b.brick('stone', 23.4, 0, 2, 3);
+      b.pig('medium', 25.3, 0);
+    } },
+    'Harbor Docks': { pref: ['yellow', 'blue', 'red', 'black', 'red', 'white'], build: (b) => {
+      const a = b.rock(14, 16.5, -0.5, 1.6);
+      const c = b.wall((cc, r) => (cc === 1 && r === 0 ? 'tnt' : 'wood'), 15.25, a, 2, 2);
+      b.pig('small', 15.25, c);
+      const d = b.rock(18.5, 21, -0.5, 2.6);
+      const t = b.building(19.75, d, 1, [{ m: 'wood', pigs: ['small'] }, { m: 'glass', pigs: ['small'] }]);
+      b.tri('wood', 19.75, t, L, 0.9);
+      const e = b.rock(23, 25.5, -0.5, 1.2);
+      b.bunker(24.25, e, { m: 'wood', s: S, rows: 3, pig: 'medium' });
+      b.pig('small', 17.5, 0);
+      b.pig('small', 22, 0);
+    } },
+    'Stonehenge': { pref: ['big', 'black', 'red', 'black', 'yellow', 'big'], build: (b) => {
+      for (const [x, pig] of [[14.6, 'medium'], [25.4, 'medium']]) {
+        const t = b.frame('stone', x, 0, XL);
+        b.pig(pig, x, 0);
+        b.cup(x, t, 'stone', 'stone');
+      }
+      b.frame('stone', 18.2, 0, XL); b.pig('helmet', 18.2, 0);
+      b.frame('stone', 21.8, 0, XL); b.pig('helmet', 21.8, 0);
+      const p = b.plank('stone', 20, 1.98, XL);
+      const t = b.frame('stone', 20, p, XL);
+      b.pig('medium', 20, p);
+      b.crenels('stone', 20, t, XL);
+    } },
+    'Twin Spires': { pref: ['yellow', 'blue', 'white', 'red', 'yellow', 'red'], build: (b) => {
+      const floors = [{ m: 'stone', roof: 'wood' }, { m: 'wood', pig: 'small' }, { m: 'wood' }, { m: 'glass', pig: 'small' }];
+      const y = b.tower(15.6, 0, floors);
+      b.tower(22.4, 0, floors);
+      b.building(19, 0, 2, [{ m: 'glass', pigs: ['small', 'small'] }, { m: 'wood' }]);
+      const d = b.plank('wood', 19, y, 6.8);
+      b.frame('glass', 19, d); b.pig('medium', 19, d);
+    } },
+    'Crystal Tower': { pref: ['blue', 'black', 'blue', 'red', 'blue', 'yellow'], build: (b) => {
+      const y = b.building(19, 0, 3, [
+        { m: 'stone', roof: 'glass', pigs: [null, 'helmet', null] },
+        { m: 'glass', pigs: ['small', null, 'small'] },
+        { m: 'glass', pigs: [null, 'small', null] },
+        { m: 'glass', pigs: ['small', null, 'small'] },
+        { n: 1, m: 'glass', pigs: ['medium'] },
       ]);
-      b.tower(24.8, 0, [{ m: 'stone', roof: 'wood', pig: 'helmet' }, { m: 'stone', roof: 'wood', pig: 'helmet' }]);
-    }),
-
-    level({ id: '1-32', name: 'Crate Mountain', birds: ['red', 'black', 'yellow'] }, (b) => {
-      const y = b.building(19.5, 0, 4, [
-        { m: 'wood', post: 'stone', roof: 'stone', pigs: ['small', null, 'medium', null] },
-        { n: 3, m: 'wood', pigs: [null, 'small', null] },
+      b.tri('glass', 19, y, L, 1.2);
+      b.frame('glass', 14.5, 0); b.pig('small', 14.5, 0);
+      b.frame('glass', 23.5, 0); b.pig('small', 23.5, 0);
+    } },
+    'Lumber Yard': { pref: ['yellow', 'red', 'yellow', 'red', 'black', 'yellow'], build: (b) => {
+      for (let r = 0; r < 6; r++) b.plank('wood', 14.6, r * T, XL);
+      b.pig('small', 14.6, 6 * T);
+      const y = b.bays(19, 0, 3, { m: 'wood', pigs: ['small', 'medium', 'small'] });
+      for (const x of [17.24, 19, 20.76]) b.cup(x, y);
+      const t = b.building(24.5, 0, 2, [{ m: 'wood', pigs: ['medium', null] }, { m: 'wood', pigs: [null, 'small'] }]);
+      b.cup(23.62, t); b.cup(25.38, t);
+    } },
+    'Mountain Keep': { pref: ['yellow', 'black', 'white', 'big', 'red', 'yellow', 'red'], build: (b) => {
+      b.cliff(17, 29, 1.6); b.cliff(20.6, 29, 3.2); b.cliff(24.2, 29, 4.8);
+      b.house(14.5, 0, { m: 'wood', pig: 'small' });
+      b.brick('wood', 16.3, 0, 1, 3);
+      b.bays(18.8, 1.6, 2, { w: 1.6, m: 'wood', pigs: ['small', 'small'] });
+      b.building(22.4, 3.2, 2, [{ m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] }, { m: 'glass', pigs: [null, 'small'] }], 1.6);
+      b.keep(26.6, 4.8, { m: 'stone', w: XL, h: 2.2, floors: 1, roof: 'wood', pigs: ['king'] });
+    } },
+    'Grand Bridge': { pref: ['yellow', 'blue', 'red', 'black', 'white', 'red', 'yellow'], build: (b) => {
+      const h = b.mesa(12.6, 15.4, 3, 1.2);
+      b.mesa(24.6, 27.4, 3, 1.2);
+      const y = b.tower(14, h, [{ m: 'wood', pig: 'small' }, { m: 'stone', roof: 'wood' }]);
+      b.tower(26, h, [{ m: 'wood', pig: 'small' }, { m: 'stone', roof: 'wood' }]);
+      const d = b.plank('wood', 20, y, 12.4);
+      b.frame('glass', 17.4, d); b.pig('small', 17.4, d);
+      b.tri('wood', 20, b.frame('wood', 20, d), L, 0.8); b.pig('medium', 20, d);
+      b.frame('glass', 22.6, d); b.pig('small', 22.6, d);
+      b.building(20, 0, 3, [{ m: 'stone', roof: 'wood', pigs: ['small', 'helmet', 'small'] }]);
+    } },
+    'Pyramid Temple': { pref: ['big', 'black', 'yellow', 'white', 'red', 'black'], build: (b) => {
+      const y = b.building(20, 0, 5, [
+        { m: 'stone', roof: 'stone', pigs: [null, 'small', null, 'small', null] },
+        { n: 4, m: 'wood', roof: 'stone', pigs: ['small', null, null, 'small'] },
+        { n: 3, m: 'wood', pigs: [null, 'helmet', null] },
         { n: 2, m: 'glass', pigs: ['small', 'small'] },
         { n: 1, m: 'wood', pigs: ['medium'] },
       ]);
-      b.tri('wood', 19.5, y, L, 0.9);
-      b.cube('wood', 15.3, 0); b.cube('wood', 23.7, 0);
-    }),
-
-    level({ id: '1-33', name: 'Sky Bridge', birds: ['yellow', 'blue', 'red', 'black', 'red'] }, (b) => {
-      const h = b.mesa(13, 16, 3, 1.4);
-      b.mesa(23, 26, 3, 1.4);
-      const y = b.tower(14.5, h, [{ m: 'wood', pig: 'small' }, { m: 'stone', roof: 'wood' }]);
-      b.tower(24.5, h, [{ m: 'wood', pig: 'small' }, { m: 'stone', roof: 'wood' }]);
-      const d = b.plank('wood', 19.5, y, 10.4);
-      b.frame('glass', 17.5, d); b.pig('small', 17.5, d);
-      b.pig('medium', 19.5, d);
-      b.frame('glass', 21.5, d); b.pig('small', 21.5, d);
-      b.bunker(19.5, 0, { m: 'stone', pig: 'medium', roof: 'wood' });
-    }),
-
-    level({ id: '1-34', name: 'Underground', birds: ['white', 'white', 'black', 'red', 'black'] }, (b) => {
-      const h = b.cliff(14, 17, 3);
-      b.cliff(22, 26, 3);
-      const r = b.plank('stone', 19.5, h, 5.4);
-      b.plank('wood', 19.5, r, 5.4);
-      b.pig('medium', 17.7, 0);
-      b.frame('wood', 19.5, 0); b.pig('small', 19.5, 0);
-      b.pig('medium', 21.3, 0);
-      b.house(15.5, h, { m: 'wood', pig: 'small' });
-      b.house(24, h, { m: 'glass', top: 'wood', pig: 'small' });
-    }),
-
-    level({ id: '1-35', name: 'Fort Knox', birds: ['blue', 'yellow', 'black', 'big', 'red'] }, (b) => {
-      b.stack('glass', 14.8, 0, 3);
-      b.stack('wood', 16.4, 0, 4);
-      const y = b.keep(19.5, 0, { m: 'stone', w: XL, h: 2.2, floors: 1, roof: 'stone', pigs: ['king'], crenels: false });
-      b.house(19.5, y, { m: 'wood', pig: 'helmet' });
-      b.stack('wood', 22.6, 0, 4);
-      b.stack('glass', 24.2, 0, 3);
-    }),
-
-    level({ id: '1-36', name: 'Watchtowers', birds: ['yellow', 'red', 'blue', 'black', 'red', 'black'] }, (b) => {
-      const a = b.rock(14, 16, -0.5, 2.0);
-      b.tower(15, a, [{ m: 'wood', pig: 'small' }, { m: 'wood', pig: 'small' }]);
-      const c = b.rock(18.5, 20.5, -0.5, 3.5);
-      b.tower(19.5, c, [{ m: 'glass', pig: 'small' }, { m: 'wood', pig: 'small' }, { m: 'glass' }]);
-      const e = b.rock(23, 25, -0.5, 1.0);
-      b.tower(24, e, [{ m: 'wood', pig: 'helmet' }, { m: 'glass', pig: 'small' }]);
-      b.cube('tnt', 22.2, 0);
-    }),
-
-    level({ id: '1-37', name: 'Balancing Act', birds: ['red', 'red', 'yellow', 'blue'] }, (b) => {
-      const a = b.rock(18.6, 19.4, -0.5, 2.5);
-      const p = b.plank('wood', 19, a, 4.4);
-      b.frame('glass', 17.7, p); b.pig('small', 17.7, p);
-      b.frame('glass', 20.3, p); b.pig('small', 20.3, p);
-      const c = b.rock(23.6, 24.4, -0.5, 1.5);
-      const q = b.plank('wood', 24, c, 3.52);
-      b.cube('stone', 22.68, q); b.cube('stone', 25.32, q);
-      b.pig('small', 24, q);
-      b.plank('glass', 24, q + M, 3.52);
-      b.frame('wood', 15, 0); b.pig('medium', 15, 0);
-    }),
-
-    level({ id: '1-38', name: 'The Citadel', birds: ['yellow', 'black', 'big', 'red', 'blue'] }, (b) => {
-      const h1 = b.cliff(17, 28, 1.5);
-      const h2 = b.cliff(21.5, 28, 3.0);
+      b.tri('wood', 20, y, L, 1.0);
+    } },
+    'Bunker Complex': { pref: ['black', 'white', 'red', 'black', 'big', 'red'], build: (b) => {
+      b.brick('stone', 12.6, 0, 1, 3);
+      for (const [x, pig] of [[15, 'helmet'], [19, 'medium'], [23, 'helmet']]) b.bunker(x, 0, { s: S, rows: 4, pig, roof: 'stone' });
+      const w = b.plank('wood', 19, 1.98, 10);
+      b.frame('wood', 16.9, w); b.pig('small', 16.9, w);
+      b.cube('tnt', 19, w);
+      b.frame('wood', 21.1, w); b.pig('small', 21.1, w);
+    } },
+    'Ice Fortress': { pref: ['blue', 'blue', 'black', 'yellow', 'red', 'blue', 'black'], build: (b) => {
+      b.brick('glass', 15, 0, 1, 5);
+      b.stack('glass', 16.4, 0, 3, S);
+      const y = b.building(20, 0, 3, [
+        { m: 'stone', roof: 'wood', pigs: ['helmet', 'medium', 'helmet'] },
+        { m: 'glass', post: 'wood', pigs: ['small', null, 'small'] },
+        { n: 2, m: 'glass', pigs: ['small', 'small'] },
+      ]);
+      b.tri('glass', 20, y, 2 * L, 1.0);
+      b.stack('glass', 23.6, 0, 3, S);
+      b.brick('glass', 25, 0, 1, 5);
+    } },
+    'Cliff Castle': { pref: ['yellow', 'black', 'white', 'big', 'red', 'yellow', 'black'], build: (b) => {
+      const h = b.cliff(19.5, 29.5, 3.5);
       b.house(15, 0, { m: 'wood', pig: 'small' });
-      b.bays(19.2, h1, 2, { m: 'wood', pigs: ['small', 'medium'] });
-      const y = b.keep(24.8, h2, { m: 'stone', w: XL, h: 2.2, floors: 1, roof: 'wood', pigs: ['king'] });
-      b.cube('tnt', 22.3, h2);
-      b.frame('glass', 27, h2, 1.4); b.pig('small', 27, h2);
-    }),
-
-    level({ id: '1-39', name: 'Pig Mansion', birds: ['yellow', 'blue', 'black', 'red', 'white', 'red'] }, (b) => {
+      b.brick('wood', 17.4, 0, 1, 4);
+      b.keep(21, h, { m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] });
+      b.building(24.4, h, 2, [{ m: 'wood', post: 'stone', pigs: ['medium', 'small'] }, { m: 'glass', pigs: ['small', null] }]);
+      b.cube('tnt', 27, h);
+      b.keep(28.4, h, { m: 'wood', floors: 1, pigs: ['small'] });
+    } },
+    'Watchtower Ridge': { pref: ['yellow', 'red', 'blue', 'black', 'red', 'white', 'yellow', 'red'], build: (b) => {
+      const a = b.rock(13.6, 15.6, -0.5, 2.2);
+      b.tri('wood', 14.6, b.tower(14.6, a, [{ m: 'wood', pig: 'small' }, { m: 'glass', pig: 'small' }]), L, 0.9);
+      const c = b.rock(17.5, 19.5, -0.5, 3.8);
+      b.crenels('stone', 18.5, b.tower(18.5, c, [{ m: 'stone', roof: 'wood', pig: 'helmet' }, { m: 'wood', pig: 'small' }]), L);
+      const e = b.rock(21.5, 23.5, -0.5, 1.4);
+      b.tower(22.5, e, [{ m: 'wood', pig: 'small' }, { m: 'wood', pig: 'small' }, { m: 'glass' }]);
+      const g = b.rock(25.2, 27.2, -0.5, 3.0);
+      b.keep(26.2, g, { m: 'stone', floors: 1, roof: 'wood', pigs: ['helmet'] });
+      b.cube('tnt', 16.55, 0); b.cube('tnt', 20.5, 0);
+      b.pig('small', 24.35, 0);
+    } },
+    'Stone Gate': { pref: ['black', 'yellow', 'big', 'red', 'black', 'red', 'yellow'], build: (b) => {
+      b.keep(14.8, 0, { m: 'stone', roof: 'wood', pigs: ['small', 'helmet'] });
+      const y = b.building(19, 0, 3, [
+        { m: 'wood', post: 'stone', pigs: ['small', null, 'small'] },
+        { m: 'wood', pigs: [null, 'medium', null] },
+        { m: 'glass', pigs: [null, null, 'small'] },
+      ]);
+      b.crenels('wood', 19, y, 3 * L);
+      b.keep(23.2, 0, { m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] });
+    } },
+    'Hilltop Fortress': { pref: ['big', 'black', 'yellow', 'white', 'red', 'black', 'red'], build: (b) => {
+      const h = b.mesa(16.5, 26.5, 2.5);
+      b.keep(17.6, h, { m: 'stone', roof: 'wood', pigs: ['small', 'helmet'] });
+      b.brick('stone', 19.6, h, 1, 4);
+      const y = b.building(22, h, 2, [{ m: 'stone', roof: 'wood', pigs: ['medium', 'helmet'] }, { m: 'wood', pigs: ['small', 'small'] }]);
+      const k = b.frame('wood', 22, y, XL, 2.2);
+      b.pig('king', 22, y);
+      b.crenels('stone', 22, k, XL);
+      b.keep(25.4, h, { m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] });
+    } },
+    'The Vault': { pref: ['black', 'big', 'black', 'red', 'white', 'black'], build: (b) => {
+      for (const [x, pigs] of [[16.5, ['helmet', 'tnt']], [23.2, ['medium', 'small']]]) {
+        b.wall('stone', x, 0, 5, 1);
+        b.stack('stone', x - 2 * M, M, 3); b.stack('stone', x + 2 * M, M, 3);
+        if (pigs[1] === 'tnt') { b.pig(pigs[0], x - 0.6, M); b.cube('tnt', x + 0.75, M); }
+        else { b.pig(pigs[0], x - 0.6, M); b.pig(pigs[1], x + 0.75, M); }
+        const r = b.plank('stone', x, 4 * M, 5 * M);
+        const t = b.plank('wood', x, r, 5 * M);
+        b.crenels('stone', x, t, 5 * M);
+      }
+    } },
+    'Floating Citadel': { pref: ['yellow', 'red', 'blue', 'white', 'black', 'red', 'yellow', 'red'], build: (b) => {
+      const a = b.rock(13.5, 17, 3.0, 3.6);
+      b.tri('wood', 15.25, b.frame('wood', 15.25, a, XL), XL, 0.9); b.pig('medium', 15.25, a);
+      const c = b.rock(19, 23, 5.4, 6.0);
+      b.crenels('stone', 21, b.bays(21, c, 2, { m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] }), 2 * L);
+      const e = b.rock(24.5, 28, 2.2, 2.8);
+      b.bunker(26.25, e, { m: 'wood', s: S, rows: 3, pig: 'medium' });
+      b.building(21, 0, 2, [{ m: 'glass', pigs: ['small', 'small'] }, { m: 'wood' }]);
+      b.frame('glass', 15.25, 0); b.pig('small', 15.25, 0);
+    } },
+    'Underground Lair': { pref: ['white', 'white', 'black', 'red', 'black', 'yellow', 'white', 'red'], build: (b) => {
+      const h = b.cliff(13.5, 17, 3);
+      b.cliff(22, 27, 3);
+      const r1 = b.plank('wood', 19.5, h, 5.6);
+      b.brick('glass', 19.5, r1, 3, 2);
+      const t = b.bays(19.5, 0, 2, { m: 'wood', pigs: ['medium', 'small'] });
+      b.pig('small', 19.5, t);
+      b.house(15.2, h, { m: 'wood', pig: 'small' });
+      b.building(24.5, h, 2, [{ m: 'glass', pigs: ['small', 'small'] }, { m: 'wood' }]);
+    } },
+    'Fortress Ring': { pref: ['blue', 'yellow', 'black', 'big', 'red', 'black', 'white'], build: (b) => {
+      b.brick('glass', 14.2, 0, 1, 6); b.brick('glass', 25.8, 0, 1, 6);
+      b.brick('wood', 15.6, 0, 1, 5); b.brick('wood', 24.4, 0, 1, 5);
+      const y = b.keep(20, 0, { m: 'stone', w: XL, h: 2.2, floors: 1, roof: 'stone', pigs: ['king'], crenels: false });
+      b.house(20, y, { m: 'wood', pig: 'helmet' });
+      for (const x of [17.36, 22.64]) {
+        const t = b.frame('wood', x, 0, 1.4);
+        b.pig('small', x, 0);
+        b.cube('tnt', x, t);
+      }
+    } },
+    'Tower of Doom': { pref: ['yellow', 'black', 'white', 'big', 'red', 'yellow', 'red'], build: (b) => {
+      const y = b.building(20, 0, 2, [
+        { m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] }, { m: 'wood', pigs: [null, 'medium'] },
+        { m: 'glass', pigs: ['small', null] }, { m: 'wood', pigs: [null, 'small'] },
+        { m: 'glass' }, { m: 'wood', pigs: ['small', 'small'] },
+      ]);
+      b.cup(19.12, y); b.cup(20.88, y);
+      b.stack('tnt', 17.2, 0, 2);
+      b.brick('stone', 15.4, 0, 1, 4);
+      b.brick('wood', 23.6, 0, 1, 4);
+      b.pig('medium', 25, 0);
+    } },
+    'Royal Palace': { pref: ['blue', 'yellow', 'black', 'red', 'big', 'white', 'red', 'yellow'], build: (b) => {
       const y = b.building(20, 0, 5, [
         { m: 'stone', roof: 'wood', pigs: ['small', null, 'helmet', null, 'small'] },
         { m: 'wood', pigs: [null, 'medium', null, 'medium', null] },
-        { m: 'glass', pigs: ['small', null, null, null, 'small'] },
+        { n: 3, m: 'glass', pigs: ['small', null, 'small'] },
       ]);
-      b.tri('wood', 20, y, L, 1.0);
-      b.cube('tnt', 18.24, y); b.cube('tnt', 21.76, y);
-    }),
+      const k = b.frame('wood', 20, y, XL, 2.2);
+      b.pig('king', 20, y);
+      b.crenels('stone', 20, k, XL);
+      b.tower(13.6, 0, [{ m: 'wood', pig: 'small' }, { m: 'glass' }]);
+      b.tower(26.4, 0, [{ m: 'wood', pig: 'small' }, { m: 'glass' }]);
+    } },
+    'Pig Mansion': { pref: ['yellow', 'blue', 'black', 'red', 'white', 'big', 'yellow', 'red'], build: (b) => {
+      const y = b.building(20, 0, 6, [
+        { m: 'stone', roof: 'wood', pigs: ['small', null, 'helmet', 'helmet', null, 'small'] },
+        { m: 'wood', pigs: [null, 'medium', null, null, 'medium', null] },
+        { m: 'glass', pigs: ['small', null, 'small', 'small', null, 'small'] },
+        { n: 4, m: 'wood', pigs: [null, 'medium', 'medium', null] },
+      ]);
+      b.tri('wood', 18.24, y, 2 * L, 1.0); b.tri('wood', 21.76, y, 2 * L, 1.0);
+      b.cube('tnt', 15.6, 1.98); b.cube('tnt', 24.4, 1.98);
+    } },
+    'Pig Metropolis': { pref: ['yellow', 'blue', 'black', 'red', 'white', 'big', 'black', 'red'], build: (b) => {
+      b.tower(13.5, 0, [{ m: 'stone', roof: 'wood', pig: 'helmet' }, { m: 'wood' }, { m: 'wood', pig: 'small' }]);
+      b.building(16.8, 0, 2, [
+        { m: 'wood', post: 'stone', pigs: ['helmet', null] }, { m: 'wood', pigs: [null, 'small'] },
+        { m: 'glass' }, { m: 'wood', pigs: ['medium', null] },
+      ]);
+      b.cube('tnt', 19.15, 0);
+      const y = b.building(22.4, 0, 3, [
+        { m: 'stone', roof: 'wood', pigs: ['helmet', null, 'helmet'] },
+        { m: 'wood', pigs: [null, 'medium', null] },
+        { m: 'glass', pigs: ['small', null, 'small'] },
+      ]);
+      b.tri('wood', 22.4, y, 3 * L, 1.2);
+      b.cube('tnt', 25.65, 0);
+      b.tower(27.2, 0, [{ m: 'stone', roof: 'wood', pig: 'helmet' }, { m: 'stone', roof: 'wood' }, { m: 'wood', pig: 'small' }]);
+    } },
+    'Skyline': { pref: ['yellow', 'black', 'blue', 'red', 'big', 'red', 'white', 'yellow'], build: (b) => {
+      b.tower(13.8, 0, [{ m: 'wood', pig: 'small' }, { m: 'wood' }, { m: 'wood', pig: 'small' }, { m: 'wood' }]);
+      b.building(17.3, 0, 2, [
+        { m: 'stone', roof: 'wood', pigs: ['helmet', null] }, { m: 'wood', pigs: [null, 'small'] }, { m: 'glass' },
+        { m: 'wood', pigs: ['small', null] }, { m: 'wood', pigs: [null, 'small'] },
+      ]);
+      b.cube('tnt', 19.7, 0);
+      b.building(23, 0, 3, [
+        { m: 'stone', roof: 'wood', pigs: ['helmet', null, 'helmet'] },
+        { m: 'wood', pigs: [null, 'medium', null] },
+        { m: 'glass', pigs: ['small', null, 'small'] },
+      ]);
+      b.tower(27.2, 0, [{ m: 'stone', roof: 'wood', pig: 'helmet' }, { m: 'stone', roof: 'wood', pig: 'small' }]);
+    } },
+    'Siege Castle': { pref: ['black', 'yellow', 'big', 'blue', 'red', 'white', 'black', 'red'], build: (b) => {
+      b.keep(14.5, 0, { m: 'stone', floors: 3, roof: 'wood', pigs: ['small', 'helmet', 'small'] });
+      b.brick('stone', 16.6, 0, 1, 6);
+      const y = b.building(20.2, 0, 3, [
+        { m: 'stone', roof: 'wood', pigs: ['helmet', 'helmet', 'helmet'] },
+        { m: 'wood', post: 'stone', pigs: [null, 'small', null] },
+        { n: 2, m: 'wood', pigs: ['small', 'small'] },
+      ]);
+      const k = b.frame('stone', 20.2, y, XL, 2.2);
+      b.pig('king', 20.2, y);
+      b.crenels('wood', 20.2, k, XL);
+      b.brick('stone', 23.8, 0, 1, 6);
+      b.keep(25.9, 0, { m: 'stone', floors: 3, roof: 'wood', pigs: ['helmet', 'small', 'small'] });
+    } },
+    "King's Last Stand": { pref: ['red', 'blue', 'yellow', 'black', 'white', 'big', 'black', 'red'], build: (b) => {
+      const h = b.mesa(14.5, 27.5, 2.0);
+      b.keep(15.6, h, { m: 'stone', floors: 3, roof: 'wood', pigs: ['helmet', 'small', 'small'] });
+      b.brick('stone', 17.5, h, 1, 5);
+      const y = b.building(21, h, 3, [
+        { m: 'stone', roof: 'wood', pigs: ['helmet', 'helmet', 'helmet'] },
+        { m: 'wood', post: 'stone', pigs: ['small', null, 'small'] },
+        { n: 2, m: 'wood', post: 'stone', pigs: ['small', 'small'] },
+      ]);
+      const k = b.frame('stone', 21, y, XL, 2.2);
+      b.pig('king', 21, y);
+      b.crenels('stone', 21, k, XL);
+      b.brick('stone', 24.5, h, 1, 5);
+      b.keep(26.4, h, { m: 'stone', floors: 3, roof: 'wood', pigs: ['small', 'helmet', 'small'] });
+      b.cube('tnt', 12.3, 0);
+    } },
+  };
 
-    level({ id: '1-40', name: "King's Last Stand", birds: ['red', 'blue', 'yellow', 'black', 'white', 'big'] }, (b) => {
-      const h = b.mesa(15, 26, 2.0);
-      b.keep(16.5, h, { m: 'stone', roof: 'wood', pigs: ['helmet', 'small'] });
-      let y = b.building(20.5, h, 3, [
-        { m: 'stone', roof: 'wood', pigs: ['medium', 'helmet', 'medium'] },
-        { m: 'wood', pigs: ['small', null, 'small'] },
-      ]);
-      y = b.bays(20.5, y, 2, { m: 'glass', pigs: ['small', 'small'] });
-      const k = b.frame('wood', 20.5, y, XL, 2.2);
-      b.pig('king', 20.5, y);
-      b.crenels('stone', 20.5, k, XL);
-      b.keep(24.5, h, { m: 'stone', roof: 'wood', pigs: ['small', 'helmet'] });
-      b.cube('tnt', 13.2, 0);
-    }),
+  const ISLAND_BIRDS = [
+    ['Pyramid Temple', 4], ['Twin Spires', 3],
+    ['Wooden Village', 5], ['Hill Village', 6],
+    ['Harbor Docks', 5], ['Crystal Tower', 4],
+    ['Pig Mansion', 5], ['Glass Gardens', 4],
+    ['The Vault', 3], ['Grand Bridge', 6],
+    ['Tower of Doom', 4], ['Mountain Keep', 6],
+    ['Stonehenge', 5], ['Fortress Ring', 3],
+    ['Brick Barracks', 5], ['Ice Fortress', 3],
+    ['Floating Citadel', 6], ['Market Square', 5],
+    ['Cliff Castle', 5], ['Watchtower Ridge', 6],
+    ['Stone Gate', 4], ['Royal Palace', 5],
+    ['Bunker Complex', 3], ['Pig Metropolis', 5],
+    ['Hilltop Fortress', 4], ['Skyline', 5],
+    ['Lumber Yard', 4], ['Underground Lair', 5],
+    ['Siege Castle', 7], ["King's Last Stand", 6],
   ];
+
+  ISLAND_BIRDS.forEach(([name, n], i) => {
+    const d = ISLAND_DESIGNS[name];
+    island.push(level({ id: '1-' + (11 + i), rev: 2, name, pref: d.pref, birds: d.pref.slice(0, n) }, d.build));
+  });
 
   // ======================= World 2: Space Hogs =======================
   const space = [
@@ -617,151 +713,160 @@
         if (i === 1 || i === 4) b.cube('tnt', 19, base);
       });
     }),
+  ];
 
-    // ---------- 3-7 to 3-26: bigger buildings ----------
-    level({ id: '3-7', name: 'Two Story', birds: ['red', 'yellow', 'yellow'], objective: { type: 'demolish', pct: 65 } }, (b) => {
-      const y = b.building(19, 0, 4, [{ m: 'wood' }, { m: 'wood' }]);
-      for (const x of [16.36, 18.12, 19.88, 21.64]) b.tri('wood', x, y, 1.4, 0.7);
-    }),
-
-    level({ id: '3-8', name: 'Glass Office', birds: ['blue', 'red', 'blue'], objective: { type: 'demolish', pct: 85 } }, (b) => {
-      b.building(19, 0, 3, [{ m: 'stone', roof: 'glass' }, { m: 'glass' }, { m: 'glass' }, { m: 'glass' }]);
-    }),
-
-    level({ id: '3-9', name: 'Stone Arches', birds: ['black', 'big', 'red'], objective: { type: 'demolish', pct: 60 } }, (b) => {
-      for (const x of [15.5, 18.4, 21.3]) b.frame('stone', x, 0, XL);
-      for (const x of [16.95, 19.85]) { const t = b.frame('stone', x, 1.98); b.crenels('stone', x, t, L); }
-      const t = b.frame('stone', 18.4, 3.96, XL);
-      b.crenels('stone', 18.4, t, XL);
-    }),
-
-    level({ id: '3-10', name: 'Crate Stack', birds: ['red', 'black', 'yellow', 'red'], objective: { type: 'demolish', pct: 75 } }, (b) => {
-      const mats = ['wood', 'glass', 'wood', 'stone'];
-      b.wall((c, r) => (r === 0 ? 'stone' : (c * 7 + r * 3) % 5 === 0 ? 'tnt' : mats[(c + r) % 4]), 19.5, 0, 6, 5);
-    }),
-
-    level({ id: '3-11', name: 'Water Tower', birds: ['yellow', 'red', 'black'], objective: { type: 'demolish', pct: 70 } }, (b) => {
-      let y = b.tower(19.5, 0, [{ m: 'wood', w: XL }, { m: 'wood', w: XL }, { m: 'wood', w: XL }]);
-      y = b.wall('glass', 19.5, y, 3, 2);
-      y = b.plank('wood', 19.5, y, XL);
-      b.tri('wood', 19.5, y, XL, 0.8);
-      b.house(15.5, 0, { m: 'wood' });
-      b.house(23.5, 0, { m: 'wood' });
-    }),
-
-    level({ id: '3-12', name: 'Twin Towers II', birds: ['yellow', 'black', 'red', 'blue', 'big'], objective: { type: 'demolish', pct: 85 } }, (b) => {
-      const mats = [['stone', 'wood'], ['wood'], ['glass'], ['wood'], ['glass'], ['wood']];
-      for (const x of [16.8, 22.2]) b.tower(x, 0, mats.map(([m, roof]) => ({ m, roof, w: XL })));
-    }),
-
-    level({ id: '3-13', name: 'Warehouse', birds: ['red', 'yellow', 'black', 'red'], objective: { type: 'demolish', pct: 70 } }, (b) => {
-      const y = b.building(20, 0, 5, [{ m: 'wood' }, { m: 'wood' }]);
-      b.cube('tnt', 18.24, 0); b.cube('tnt', 21.76, 0);
-      for (const x of [16.48, 18.24, 20, 21.76, 23.52]) b.tri('wood', x, y, 1.4, 0.7);
-    }),
-
-    level({ id: '3-14', name: 'Big Pyramid', birds: ['big', 'black', 'yellow', 'red'], objective: { type: 'demolish', pct: 60 } }, (b) => {
-      b.pyramid(['stone', 'stone', 'wood', 'wood', 'glass', 'glass', 'glass'], 20, 0, 7);
-    }),
-
-    level({ id: '3-15', name: 'Apartment Block', birds: ['yellow', 'black', 'big', 'red'], objective: { type: 'demolish', pct: 80 } }, (b) => {
-      const y = b.building(19.5, 0, 3, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' }, { m: 'glass' }]);
-      b.tri('wood', 19.5, y, L, 0.9);
-    }),
-
-    level({ id: '3-16', name: 'Hilltop Hotel', birds: ['yellow', 'red', 'black', 'red'], objective: { type: 'demolish', pct: 65 } }, (b) => {
-      const h = b.mesa(16, 25, 2.5);
-      b.building(20.5, h, 4, [{ m: 'wood', post: 'stone' }, { m: 'wood' }, { m: 'glass' }]);
-    }),
-
-    level({ id: '3-17', name: 'Factory', birds: ['black', 'yellow', 'red', 'big'], objective: { type: 'demolish', pct: 70 } }, (b) => {
-      const y = b.building(18.5, 0, 4, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }]);
-      b.stack('stone', 15.86, y, 4, S); b.stack('stone', 19.38, y, 4, S);
-      b.stack('glass', 24, 0, 4);
-      b.ball('stone', 24, 4 * M, 0.42);
-    }),
-
-    level({ id: '3-18', name: 'The Bridge', birds: ['red', 'yellow', 'black'], objective: { type: 'demolish', pct: 70 } }, (b) => {
+  // ---------- 3-7 to 3-26: big buildings ----------
+  // Same scheme as Pig Island: designs + an order with tuned bird counts and goal %.
+  const DEMO_DESIGNS = {
+    'Row Houses': { pref: ['red', 'yellow', 'yellow', 'red', 'yellow', 'black'], build: (b) => {
+      b.house(13.6, 0, { m: 'wood' });
+      b.house(15.6, 0, { m: 'wood', top: 'glass' });
+      const y = b.building(19.4, 0, 2, [{ m: 'wood' }, { m: 'wood' }]);
+      b.tri('wood', 18.52, y, 1.4, 0.7); b.tri('wood', 20.28, y, 1.4, 0.7);
+      b.brick('wood', 23, 0, 2, 4);
+      b.house(25.4, 0, { m: 'wood', w: XL });
+    } },
+    'Water Works': { pref: ['yellow', 'red', 'black', 'yellow', 'red'], build: (b) => {
+      for (const x of [16, 22.6]) {
+        let y = b.tower(x, 0, [{ m: 'wood', w: XL }, { m: 'wood', w: XL }]);
+        y = b.wall('glass', x, y, 3, 2);
+        b.tri('wood', x, b.plank('wood', x, y, XL), XL, 0.8);
+      }
+      b.house(19.3, 0, { m: 'wood' });
+      b.brick('wood', 25.6, 0, 1, 3);
+    } },
+    'Big Warehouse': { pref: ['red', 'yellow', 'black', 'red', 'yellow'], build: (b) => {
+      const y = b.building(20, 0, 6, [{ m: 'wood' }, { m: 'wood' }]);
+      b.cube('tnt', 17.36, 0); b.cube('tnt', 22.64, 0);
+      for (let i = 0; i < 6; i++) b.tri('wood', 15.6 + i * L, y, 1.4, 0.7);
+    } },
+    'The Bridge': { pref: ['red', 'yellow', 'black', 'red', 'yellow'], build: (b) => {
       const h = b.cliff(13, 16.5, 2.5);
       b.cliff(23.5, 27, 2.5);
-      b.tower(20, 0, [{ m: 'wood', h: 2.28 }]);
+      b.brick('stone', 20, 0, 1, 5, 0.5);
       const d = b.plank('wood', 18.09, h, 3.78);
       b.plank('wood', 21.91, h, 3.78);
       b.frame('glass', 17.4, d); b.frame('wood', 20, d); b.frame('glass', 22.6, d);
-      b.tower(14.75, h, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }]);
-      b.tower(25.25, h, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }]);
-    }),
-
-    level({ id: '3-19', name: 'Ziggurat', birds: ['big', 'black', 'black', 'red'], objective: { type: 'demolish', pct: 55 } }, (b) => {
-      const rows = ['stone', 'stone', 'wood', 'wood', 'glass'];
-      rows.forEach((m, r) => b.wall(m, 20, r * M, 7 - r, 1));
-      const t = b.frame('wood', 20, rows.length * M);
-      b.tri('wood', 20, t, L, 0.9);
-    }),
-
-    level({ id: '3-20', name: 'Castle', birds: ['black', 'big', 'yellow', 'red', 'black'], objective: { type: 'demolish', pct: 65 } }, (b) => {
-      b.keep(15.2, 0, { m: 'stone', roof: 'wood' });
-      b.crenels('stone', 17.4, b.wall('stone', 17.4, 0, 2, 2), 2 * M);
-      const g = b.building(20.6, 0, 2, [{ m: 'wood', post: 'stone' }, { m: 'wood' }]);
-      b.crenels('wood', 20.6, g, 2 * L);
-      b.crenels('stone', 23.8, b.wall('stone', 23.8, 0, 2, 2), 2 * M);
-      b.keep(26, 0, { m: 'stone', roof: 'wood' });
-    }),
-
-    level({ id: '3-21', name: 'Clock Tower', birds: ['yellow', 'red', 'black', 'big'], objective: { type: 'demolish', pct: 75 } }, (b) => {
-      const y = b.tower(20, 0, [
-        { m: 'stone', w: XL, roof: 'wood' }, { m: 'stone', w: XL, roof: 'wood' },
-        { m: 'wood' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' }, { m: 'glass' },
-      ]);
-      b.tri('wood', 20, y, L, 1.0);
-      b.house(16, 0, { m: 'wood' });
-      b.house(24, 0, { m: 'wood' });
-    }),
-
-    level({ id: '3-22', name: 'Stadium', birds: ['red', 'yellow', 'black', 'blue'], objective: { type: 'demolish', pct: 65 } }, (b) => {
-      const mats = ['stone', 'wood', 'wood', 'glass'];
-      for (let r = 0; r < 4; r++) {
-        for (let c = 0; c < 4 - r; c++) {
-          b.cube(mats[r], 14.2 + c * M, r * M);
-          b.cube(mats[r], 25.8 - c * M, r * M);
-        }
+      b.crenels('wood', 14.75, b.tower(14.75, h, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }]), L);
+      b.crenels('wood', 25.25, b.tower(25.25, h, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }]), L);
+    } },
+    'Great Pyramid': { pref: ['big', 'black', 'yellow', 'red', 'black'], build: (b) => {
+      const y = b.pyramid(['stone', 'stone', 'wood', 'wood', 'wood', 'glass', 'glass', 'glass'], 20, 0, 8);
+      b.tri('wood', 20, y, M, 0.7);
+    } },
+    'Stadium': { pref: ['red', 'yellow', 'black', 'blue', 'red'], build: (b) => {
+      const mats = ['stone', 'wood', 'wood', 'glass', 'glass'];
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5 - r; c++) { b.cube(mats[r], 13.44 + c * M, r * M); b.cube(mats[r], 26.56 - c * M, r * M); }
       }
       const t = b.frame('glass', 20, 0, XL);
-      b.frame('glass', 20, t, XL);
-    }),
-
-    level({ id: '3-23', name: 'Downtown', birds: ['yellow', 'black', 'blue', 'red', 'big'], objective: { type: 'demolish', pct: 70 } }, (b) => {
-      b.tower(14.6, 0, [{ m: 'wood' }, { m: 'wood' }, { m: 'wood' }, { m: 'wood' }]);
-      b.building(18, 0, 2, [{ m: 'glass' }, { m: 'glass' }, { m: 'glass' }]);
-      b.cube('tnt', 20.5, 0);
-      b.tower(22.5, 0, [{ m: 'stone', w: XL, roof: 'wood' }, { m: 'wood', w: XL }, { m: 'wood', w: XL }]);
-      b.house(25.8, 0, { m: 'wood' });
-    }),
-
-    level({ id: '3-24', name: 'Stone Fortress', birds: ['black', 'black', 'big', 'big'], objective: { type: 'demolish', pct: 55 } }, (b) => {
-      b.crenels('stone', 16, b.wall('stone', 16, 0, 2, 3), 2 * M);
-      b.keep(19.5, 0, { m: 'stone', w: XL, roof: 'stone' });
-      b.cube('tnt', 19.5, 0);
-      b.crenels('stone', 23, b.wall('stone', 23, 0, 2, 3), 2 * M);
-    }),
-
-    level({ id: '3-25', name: 'Mega Block', birds: ['big', 'black', 'yellow', 'red', 'black'], objective: { type: 'demolish', pct: 75 } }, (b) => {
+      const u = b.frame('glass', 20, t, XL);
+      b.tri('wood', 20, b.plank('wood', 20, u, XL), XL, 0.7);
+    } },
+    'Viaduct': { pref: ['black', 'big', 'red', 'black', 'yellow'], build: (b) => {
+      for (const x of [14.6, 17.3, 20, 22.7]) b.frame('stone', x, 0, XL);
+      for (const x of [15.95, 18.65, 21.35]) b.frame('stone', x, 1.98);
+      for (const x of [17.3, 20]) b.crenels('stone', x, b.frame('stone', x, 3.96, XL), XL);
+    } },
+    'Hilltop Hotel': { pref: ['yellow', 'red', 'black', 'red', 'yellow'], build: (b) => {
+      const h = b.mesa(15.5, 26, 2.5);
+      const y = b.building(21, h, 4, [{ m: 'wood', post: 'stone' }, { m: 'wood' }, { m: 'glass' }]);
+      for (const x of [18.36, 20.12, 21.88, 23.64]) b.tri('wood', x, y, 1.4, 0.7);
+      b.keep(16.4, h, { m: 'wood', floors: 2 });
+    } },
+    'Crate Warehouse': { pref: ['red', 'black', 'yellow', 'red', 'black'], build: (b) => {
+      const mats = ['wood', 'glass', 'wood', 'stone', 'wood'];
+      b.wall((c, r) => (r === 0 ? 'stone' : (c * 5 + r * 3) % 9 === 0 ? 'tnt' : mats[(c + r) % 5]), 19.5, 0, 8, 5);
+    } },
+    'Twin Towers': { pref: ['yellow', 'black', 'red', 'blue', 'big', 'red'], build: (b) => {
+      const mats = [['stone', 'wood'], ['wood'], ['glass'], ['wood'], ['glass'], ['wood']];
+      let y = 0;
+      for (const x of [16.8, 22.2]) y = b.tower(x, 0, mats.map(([m, roof]) => ({ m, roof, w: XL })));
+      const d = b.plank('wood', 19.5, y, 5.4);
+      b.frame('glass', 19.5, d);
+    } },
+    'Factory': { pref: ['black', 'yellow', 'red', 'big', 'black'], build: (b) => {
+      const y = b.building(18.5, 0, 4, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }]);
+      b.brick('stone', 15.86, y, 1, 6); b.brick('stone', 19.38, y, 1, 6);
+      b.cube('tnt', 22.6, 0);
+      b.stack('glass', 24, 0, 4);
+      b.ball('stone', 24, 4 * M, 0.42);
+    } },
+    'Clock Tower': { pref: ['yellow', 'red', 'black', 'big', 'yellow'], build: (b) => {
+      const y = b.tower(20, 0, [
+        { m: 'stone', w: XL, roof: 'wood' }, { m: 'stone', w: XL, roof: 'wood' },
+        { m: 'wood' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' },
+      ]);
+      b.tri('wood', 20, y, L, 1.0);
+      b.building(15.5, 0, 2, [{ m: 'wood' }, { m: 'wood' }]);
+      b.building(24.5, 0, 2, [{ m: 'wood' }, { m: 'glass' }]);
+    } },
+    'Ziggurat': { pref: ['big', 'black', 'black', 'red', 'yellow'], build: (b) => {
+      const rows = ['stone', 'stone', 'stone', 'wood', 'wood', 'wood', 'glass'];
+      rows.forEach((m, r) => b.wall(m, 20, r * M, 9 - r, 1));
+      b.tri('wood', 20, b.frame('wood', 20, rows.length * M), L, 0.9);
+    } },
+    'Apartment Block': { pref: ['yellow', 'black', 'big', 'red', 'yellow'], build: (b) => {
+      const y = b.building(19.5, 0, 4, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' }, { m: 'glass' }]);
+      b.tri('wood', 17.74, y, 2 * L, 0.9); b.tri('wood', 21.26, y, 2 * L, 0.9);
+    } },
+    'Glass Office': { pref: ['blue', 'blue', 'red', 'blue', 'yellow'], build: (b) => {
+      b.brick('glass', 14.6, 0, 1, 4);
+      b.building(19.5, 0, 4, [{ m: 'stone', roof: 'glass' }, { m: 'glass' }, { m: 'glass' }, { m: 'glass' }]);
+      b.brick('glass', 24.4, 0, 1, 4);
+    } },
+    'Stone Fortress': { pref: ['black', 'black', 'big', 'big', 'black'], build: (b) => {
+      b.crenels('stone', 15.6, b.brick('stone', 15.6, 0, 2, 7), 2 * M);
+      b.crenels('stone', 20, b.keep(20, 0, { m: 'stone', w: XL, roof: 'stone', crenels: false }), XL);
+      b.cube('tnt', 20, 0);
+      b.crenels('stone', 24.4, b.brick('stone', 24.4, 0, 2, 7), 2 * M);
+    } },
+    'Mega Block': { pref: ['big', 'black', 'yellow', 'red', 'black', 'yellow'], build: (b) => {
       const y = b.building(20, 0, 5, [
         { m: 'stone', roof: 'wood' }, { m: 'wood', post: 'stone' }, { m: 'wood' }, { m: 'glass' },
       ]);
       b.cube('tnt', 18.24, 0); b.cube('tnt', 21.76, 1.98);
       for (const x of [16.48, 20, 23.52]) b.tri('wood', x, y, 1.4, 0.8);
-    }),
+    } },
+    'Downtown': { pref: ['yellow', 'black', 'blue', 'red', 'big', 'yellow'], build: (b) => {
+      b.tower(13.6, 0, [{ m: 'wood' }, { m: 'wood' }, { m: 'wood' }, { m: 'wood' }]);
+      b.building(17, 0, 2, [{ m: 'glass' }, { m: 'glass' }, { m: 'glass' }]);
+      b.cube('tnt', 19.4, 0);
+      b.building(22.2, 0, 2, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' }]);
+      b.tower(25.6, 0, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }, { m: 'wood' }]);
+    } },
+    'Castle': { pref: ['black', 'big', 'yellow', 'red', 'black', 'big'], build: (b) => {
+      b.keep(14.4, 0, { m: 'stone', roof: 'wood' });
+      b.brick('stone', 16.9, 0, 2, 6);
+      b.crenels('wood', 20, b.building(20, 0, 2, [{ m: 'wood', post: 'stone' }, { m: 'wood' }, { m: 'glass' }]), 2 * L);
+      b.brick('stone', 23.1, 0, 2, 6);
+      b.keep(25.6, 0, { m: 'stone', roof: 'wood' });
+    } },
+    'Grand Finale': { pref: ['red', 'yellow', 'blue', 'black', 'white', 'big', 'black'], build: (b) => {
+      b.tower(13.4, 0, [{ m: 'wood' }, { m: 'wood' }, { m: 'wood' }, { m: 'wood' }]);
+      b.building(16.6, 0, 2, [{ m: 'glass' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' }, { m: 'glass' }]);
+      b.cube('tnt', 18.95, 0);
+      const y = b.building(22.2, 0, 3, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' }]);
+      b.tri('wood', 22.2, y, 3 * L, 1.1);
+      b.cube('tnt', 25.4, 0);
+      b.keep(27.2, 0, { m: 'stone', floors: 3, roof: 'wood' });
+    } },
+  };
 
-    level({ id: '3-26', name: 'Grand Finale', birds: ['red', 'yellow', 'blue', 'black', 'white', 'big'], objective: { type: 'demolish', pct: 75 } }, (b) => {
-      b.tower(13.8, 0, [{ m: 'wood' }, { m: 'wood' }, { m: 'wood' }]);
-      b.building(17.2, 0, 2, [{ m: 'glass' }, { m: 'wood' }, { m: 'glass' }, { m: 'wood' }]);
-      b.cube('tnt', 19.7, 0);
-      b.building(23, 0, 3, [{ m: 'stone', roof: 'wood' }, { m: 'wood' }, { m: 'glass' }]);
-      b.cube('tnt', 21.24, 0); b.cube('tnt', 24.76, 1.98);
-      b.keep(27.4, 0, { m: 'stone', roof: 'wood' });
-    }),
+  // [design, birds, goal %] - tuned with tools/difficulty.js for a steady climb
+  const DEMO_ORDER = [
+    ['Big Warehouse', 4, 60], ['Water Works', 4, 64], ['Crate Warehouse', 3, 93], ['Viaduct', 4, 57],
+    ['Row Houses', 5, 55], ['Great Pyramid', 5, 55], ['Mega Block', 3, 95], ['The Bridge', 5, 55],
+    ['Hilltop Hotel', 4, 71], ['Twin Towers', 3, 95], ['Clock Tower', 4, 87], ['Factory', 4, 72],
+    ['Stadium', 5, 60], ['Ziggurat', 4, 55], ['Apartment Block', 3, 95], ['Downtown', 4, 90],
+    ['Glass Office', 4, 90], ['Stone Fortress', 4, 86], ['Castle', 4, 66], ['Grand Finale', 4, 87],
   ];
+
+  DEMO_ORDER.forEach(([name, n, pct], i) => {
+    const d = DEMO_DESIGNS[name];
+    demo.push(level({ id: '3-' + (7 + i), rev: 2, name, pref: d.pref, birds: d.pref.slice(0, n), objective: { type: 'demolish', pct } }, d.build));
+  });
+
 
   return [
     { id: 1, name: 'Pig Island', desc: 'Classic slingshot. Pop every pig!', theme: 'island', levels: island },

@@ -48,15 +48,18 @@ There is no build step. It is plain HTML, CSS and JavaScript.
 python3 -m http.server 8000         # then open http://localhost:8000
 node tools/check-levels.js          # no overlapping pieces, every level stays still when idle, and a bot can beat it
 node tools/check-levels.js 1-3 2-4  # check just a few levels
+node tools/difficulty.js 1-11 3-7   # difficulty score (0-100) from a simulated player who gets a few tries per bird
 ```
+
+Pig Island levels 11–40 and Demolition levels 7–26 are listed in `js/levels.js` as designs plus an order (`ISLAND_BIRDS`, `DEMO_ORDER`) that sets how many birds each level gets (and the goal % for Demolition). The numbers were tuned with `tools/difficulty.js` so each world gets steadily harder.
 
 Add `?level=2-3` to the URL to jump straight to a level.
 
 | File | Contents |
 |---|---|
-| `js/sim.js` | Physics and game rules: materials, damage, bird powers, explosions, scoring and planet gravity. It runs in Node too. |
+| `js/sim.js` | Physics and game rules: materials, damage, bird powers, explosions, scoring and planet gravity. It runs in Node too, and can snapshot and restore a game between shots. |
 | `js/levels.js` | All the levels, built with small stacking helpers. |
-| `js/render.js` | All the art, drawn in code with no image files, plus particle effects. |
+| `js/render.js` | All the art, drawn in code with no image files, plus destruction effects: debris, dust, screen shake and combo banners. |
 | `js/audio.js` | Sound effects and music, synthesized with WebAudio. |
 | `js/main.js` | Screens, touch input, the camera and save data. |
 | `sw.js` | The offline cache. **Bump `VERSION` whenever you change any file**, or installed copies will keep the old version. |
