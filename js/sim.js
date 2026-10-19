@@ -205,7 +205,7 @@
         x1 = Math.min(x1, x - r); x2 = Math.max(x2, x + r);
         y1 = Math.min(y1, y - r); y2 = Math.max(y2, y + r);
       };
-      for (const b of this.blocks) { const p = b.body.getPosition(); grow(p.x, p.y, Math.max(b.w || 0, b.h || 0, b.r || 0)); }
+      for (const b of this.blocks) { const p = b.body.getPosition(); grow(p.x, p.y, b.r || Math.hypot(b.w, b.h) / 2); }
       for (const p of this.pigs) { const q = p.body.getPosition(); grow(q.x, q.y, p.r); }
       for (const t of this.terrain) for (const q of t.pts) grow(q[0], q[1], 0);
       for (const p of this.planets) grow(p.x, p.y, p.r + 1);
@@ -368,6 +368,9 @@
       if (!eA || !eB) return;
       const man = contact.getManifold();
       if (!man.pointCount) return;
+      // A bird touching a pig pops it instantly, however gentle the touch.
+      if (eA.kind === 'bird' && eB.kind === 'pig') this.damagePig(eB, Infinity);
+      else if (eB.kind === 'bird' && eA.kind === 'pig') this.damagePig(eA, Infinity);
       const wm = contact.getWorldManifold(null);
       if (!wm) return;
       let px = 0, py = 0;

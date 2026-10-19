@@ -21,8 +21,57 @@ function rng(seed) {
   return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 }
 
+// Axis-aligned extents of a level piece (rotated pieces are skipped).
+function extents(d) {
+  if (d.r) return { x1: d.x - d.r, x2: d.x + d.r, y1: d.y - d.r, y2: d.y + d.r };
+  const a = ((d.a || 0) % 180 + 180) % 180;
+  if (a !== 0 && a !== 90) return null;
+  const w = a ? d.h : d.w, h = a ? d.w : d.h;
+  return { x1: d.x - w / 2, x2: d.x + w / 2, y1: d.y - h / 2, y2: d.y + h / 2 };
+}
+
+// Pieces that start inside each other get flung apart, so catch them early.
+function findOverlaps(level) {
+  const tol = 0.01, out = [];
+  const bs = level.blocks.map(extents);
+  for (let i = 0; i < bs.length; i++) {
+    for (let j = i + 1; j < bs.length; j++) {
+      const a = bs[i], b = bs[j];
+      if (!a || !b) continue;
+      if (Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1) > tol && Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) > tol) {
+        out.push(`blocks #${i} (${level.blocks[i].m}) and #${j} (${level.blocks[j].m}) overlap at x=${level.blocks[i].x.toFixed(2)}`);
+      }
+    }
+  }
+  for (const p of level.pigs) {
+    const r = Sim.PIGS[p.p].r;
+    for (let i = 0; i < bs.length; i++) {
+      const a = bs[i];
+      if (!a) continue;
+      const cx = Math.max(a.x1, Math.min(p.x, a.x2)), cy = Math.max(a.y1, Math.min(p.y, a.y2));
+      if (Math.hypot(p.x - cx, p.y - cy) < r - tol) out.push(`${p.p} pig at x=${p.x.toFixed(2)} overlaps block #${i} (${level.blocks[i].m})`);
+    }
+  }
+  return out;
+}
+
 function checkStable(level) {
   const sim = new Sim(level);
+  const settle = [];
+  if (sim.blocks.length === level.blocks.length && !level.space) {
+    // Tall towers may lean a little; tilting over or dropping means it's collapsing.
+    let tilt = 0, drop = 0, slide = 0;
+    sim.blocks.forEach((b, i) => {
+      const p = b.body.getPosition(), d = level.blocks[i];
+      const da = Math.abs(b.body.getAngle() * 180 / Math.PI - (d.a || 0));
+      tilt = Math.max(tilt, Math.min(da, Math.abs(da - 360)));
+      drop = Math.max(drop, d.y - p.y);
+      slide = Math.max(slide, Math.abs(p.x - d.x));
+    });
+    if (tilt > 4) settle.push(`a piece tilted ${tilt.toFixed(1)}° while settling`);
+    if (drop > 0.15) settle.push(`a piece dropped ${drop.toFixed(2)} m while settling`);
+    if (slide > 0.6) settle.push(`a piece slid ${slide.toFixed(2)} m while settling`);
+  }
   const start = sim.blocks.map(b => ({ b, x: b.body.getPosition().x, y: b.body.getPosition().y }));
   const pigs0 = sim.pigs.length, blocks0 = sim.blocks.length;
   for (let i = 0; i < 300; i++) sim.step();
@@ -32,7 +81,7 @@ function checkStable(level) {
     const p = s.b.body.getPosition();
     maxMove = Math.max(maxMove, Math.hypot(p.x - s.x, p.y - s.y));
   }
-  const problems = [];
+  const problems = findOverlaps(level).concat(settle);
   if (sim.pigs.length !== pigs0) problems.push(`pigs died while idle (${pigs0} -> ${sim.pigs.length})`);
   if (sim.blocks.length !== blocks0) problems.push(`blocks broke while idle (${blocks0} -> ${sim.blocks.length})`);
   if (maxMove > 0.2) problems.push(`blocks drifted ${maxMove.toFixed(2)} m`);

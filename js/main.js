@@ -87,6 +87,7 @@
   function startLevel(wi, li) {
     G.worldIdx = wi; G.levelIdx = li;
     G.level = WORLDS[wi].levels[li];
+    levelPage[wi] = Math.floor(li / levelsPerPage().size);
     G.theme = themeOf(wi);
     G.sim = new Sim(G.level, { onEvent: onSimEvent });
     G.aim = null; G.ending = null; G.lastTrail = []; G.shownScore = 0; G.hiddenQueue = 0;
@@ -462,13 +463,35 @@
     $('total-stars').innerHTML = `${STAR_SVG}<span>${total}/${max}</span>`;
   }
 
+  const levelPage = {};
+
+  function levelsPerPage() {
+    const cols = window.innerWidth >= 790 ? 10 : 5;
+    return { cols, size: cols * (window.innerHeight >= 440 ? 3 : 2) };
+  }
+
   function buildLevels() {
     const w = WORLDS[G.worldIdx];
     $('levels-title').textContent = w.name;
     $('world-stars').innerHTML = `${STAR_SVG}<span>${worldStars(w)}/${w.levels.length * 3}</span>`;
+    const { cols, size } = levelsPerPage();
+    const pages = Math.ceil(w.levels.length / size);
+    let page = levelPage[G.worldIdx];
+    if (page == null) {
+      // open on the page with the next level to beat
+      let next = w.levels.findIndex((l, i) => unlocked(w, i) && !levelSave(l.id).stars);
+      if (next < 0) next = 0;
+      page = Math.floor(next / size);
+    }
+    page = Math.max(0, Math.min(pages - 1, page));
+    levelPage[G.worldIdx] = page;
+
     const grid = $('level-grid');
+    grid.style.setProperty('--cols', cols);
+    grid.style.setProperty('--bw', cols === 10 ? '56px' : '64px');
     grid.innerHTML = '';
-    w.levels.forEach((l, li) => {
+    w.levels.slice(page * size, (page + 1) * size).forEach((l, k) => {
+      const li = page * size + k;
       const btn = document.createElement('button');
       const open = unlocked(w, li);
       btn.className = 'level-btn' + (open ? '' : ' locked');
@@ -482,7 +505,32 @@
       btn.setAttribute('aria-label', 'Level ' + (li + 1) + (open ? '' : ' (locked)'));
       grid.appendChild(btn);
     });
+    $('lv-prev').classList.toggle('off', page === 0);
+    $('lv-next').classList.toggle('off', page >= pages - 1);
+    $('level-dots').innerHTML = pages > 1 ? Array.from({ length: pages }, (_, i) => `<span class="${i === page ? 'on' : ''}"></span>`).join('') : '';
   }
+
+  function turnPage(d) {
+    const w = WORLDS[G.worldIdx];
+    const pages = Math.ceil(w.levels.length / levelsPerPage().size);
+    const p = (levelPage[G.worldIdx] || 0) + d;
+    if (p < 0 || p >= pages) return;
+    levelPage[G.worldIdx] = p;
+    Sfx.play('click');
+    buildLevels();
+  }
+
+  $('lv-prev').addEventListener('click', () => turnPage(-1));
+  $('lv-next').addEventListener('click', () => turnPage(1));
+  // swipe left/right on the level grid
+  let swipeX = null;
+  $('scr-levels').addEventListener('pointerdown', (e) => { swipeX = e.clientX; });
+  $('scr-levels').addEventListener('pointerup', (e) => {
+    if (swipeX == null) return;
+    const dx = e.clientX - swipeX;
+    swipeX = null;
+    if (Math.abs(dx) > 60) turnPage(dx < 0 ? 1 : -1);
+  });
 
   function showResult(won) {
     const sim = G.sim, id = G.level.id;

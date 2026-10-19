@@ -6,9 +6,9 @@ A slingshot physics game in the style of Angry Birds, built as an installable we
 
 | World | Levels | Goal |
 |---|---|---|
-| **Pig Island** | 10 | The classic: knock down wood, glass and stone forts and pop every pig. |
+| **Pig Island** | 40 | The classic: knock down wood, glass and stone forts and pop every pig. Later levels add castles, bunkers, cliffs, floating rock ledges, rolling boulders and TNT stores. |
 | **Space Hogs** | 6 | Each planet pulls on anything inside its dashed circle. Curve your shots around planets. |
-| **Demolition Crew** | 6 | No pigs. Wreck at least the goal % of the building. |
+| **Demolition Crew** | 26 | No pigs. Wreck at least the goal % of the building. |
 
 ## Birds
 
@@ -21,7 +21,7 @@ A slingshot physics game in the style of Angry Birds, built as an installable we
 | Matilda | Drops an exploding egg straight down. |
 | Terence | None. Big and heavy, so aim at the base. |
 
-TNT crates explode when hit. Helmet pigs and King Pig take more hits. Every bird you don't use is worth a 10,000-point bonus. Stars and best scores are saved on your phone.
+A bird that touches a pig pops it instantly, however gently. TNT crates explode when hit. Helmet pigs and King Pig take more hits. Every bird you don't use is worth a 10,000-point bonus. Stars and best scores are saved on your phone.
 
 ## Controls
 
@@ -46,7 +46,7 @@ There is no build step. It is plain HTML, CSS and JavaScript.
 
 ```bash
 python3 -m http.server 8000         # then open http://localhost:8000
-node tools/check-levels.js          # every level must stay still when idle, and a bot must be able to beat it
+node tools/check-levels.js          # no overlapping pieces, every level stays still when idle, and a bot can beat it
 node tools/check-levels.js 1-3 2-4  # check just a few levels
 ```
 

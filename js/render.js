@@ -418,6 +418,20 @@
       ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
       ctx.closePath();
+      if (t.style === 'rock') {
+        const x1 = Math.min(...pts.map(q => q[0])), y2 = Math.max(...pts.map(q => q[1]));
+        ctx.fillStyle = '#8d8a86'; ctx.fill();
+        ctx.save(); ctx.clip();
+        const R = rnd(Math.round(x1 * 13 + y2 * 7));
+        ctx.fillStyle = 'rgba(60,55,50,0.25)';
+        for (let k = 0; k < 8; k++) {
+          ctx.beginPath(); ctx.arc(pts[0][0] + R() * (pts[1][0] - pts[0][0]), pts[0][1] + R() * (pts[2][1] - pts[0][1]), 0.1 + R() * 0.25, 0, TAU); ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x1, y2 - 0.12, 200, 0.12);
+        ctx.restore();
+        ctx.strokeStyle = '#55524e'; ctx.lineWidth = 2 * px; ctx.stroke();
+        continue;
+      }
       ctx.fillStyle = th.dirt; ctx.fill();
       ctx.strokeStyle = th.dirtDark; ctx.lineWidth = 2 * px; ctx.stroke();
       ctx.strokeStyle = th.grass; ctx.lineWidth = 0.32; ctx.lineCap = 'round';
