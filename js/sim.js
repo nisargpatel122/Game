@@ -200,7 +200,8 @@
     }
 
     _computeBounds() {
-      let x1 = this.sling.x - 4, x2 = this.sling.x + 10, y1 = this.space ? this.sling.y - 6 : 0, y2 = this.sling.y + 8;
+      // Leave room left of the slingshot for the birds in line and for pulling back.
+      let x1 = this.sling.x - 5.5, x2 = this.sling.x + 10, y1 = this.space ? this.sling.y - 6 : 0, y2 = this.sling.y + 8;
       const grow = (x, y, r) => {
         x1 = Math.min(x1, x - r); x2 = Math.max(x2, x + r);
         y1 = Math.min(y1, y - r); y2 = Math.max(y2, y + r);
@@ -251,6 +252,14 @@
 
     get currentBird() { return this.birdQueue[this.birdIndex]; }
     get birdsLeft() { return this.birdQueue.length - this.birdIndex; }
+
+    // Put a waiting bird in the slingshot next; the others keep their order.
+    chooseBird(i) {
+      if (this.state !== 'aim' || i <= this.birdIndex || i >= this.birdQueue.length) return false;
+      const [type] = this.birdQueue.splice(i, 1);
+      this.birdQueue.splice(this.birdIndex, 0, type);
+      return true;
+    }
 
     launch(vx, vy) {
       if (this.state !== 'aim') return;

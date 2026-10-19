@@ -148,13 +148,16 @@
     const w = WORLDS[G.worldIdx];
     if (G.level.id === '1-1' && !save.tips.howto) {
       save.tips.howto = 1; persist();
-      showTip('red', 'How to play', 'Drag the bird back and let go. Pop every pig!');
+      showTip('red', 'How to play', 'Pull back from the bird, or from anywhere on the left side, and let go. Pop every pig!');
     } else if (w.theme === 'space' && !save.tips.space) {
       save.tips.space = 1; persist();
       showTip('blue', 'Space!', 'Inside the dashed circles, planets pull your birds. Outside, they fly straight.', 6);
     } else if (w.theme === 'demo' && !save.tips.demo) {
       save.tips.demo = 1; persist();
       showTip('big', 'Demolition', 'No pigs here. Wreck at least the goal % of blocks!', 5);
+    } else if (!save.tips.pick && G.tipTimer <= 0 && new Set(G.level.birds).size > 1) {
+      save.tips.pick = 1; persist();
+      showTip(G.level.birds[1], 'New!', 'Tap a bird waiting in line to use it next. You can also start your pull anywhere on the left side.', 6);
     }
   }
 
@@ -236,12 +239,26 @@
     if (pointers.size > 2) return;
     const sim = G.sim;
     if (sim.state === 'flying' && sim.ability()) return;
+    if (sim.state === 'aim' && !G.ending && !G.aim) {
+      // Tap a bird waiting in line to send it up next.
+      for (const q of queueLayout()) {
+        const qp = renderer.toScreen(G.cam, q.x, q.y);
+        if (Math.hypot(e.clientX - qp.x, e.clientY - qp.y) < Math.max(26, q.r * G.cam.s * 1.4)) {
+          if (sim.chooseBird(q.index)) { Sfx.play('squawk', { type: q.type }); startLoad(); }
+          return;
+        }
+      }
+    }
     if (birdReady()) {
       const rest = { x: sim.sling.restX, y: sim.sling.restY };
       const sp = renderer.toScreen(G.cam, rest.x, rest.y);
       const r = Sim.BIRDS[sim.currentBird].r;
-      if (Math.hypot(e.clientX - sp.x, e.clientY - sp.y) < Math.max(56, r * G.cam.s * 2.6)) {
-        G.aim = { id: e.pointerId, x: rest.x, y: rest.y, pts: null, max: maxPull(), lastSound: 0 };
+      // Grab the bird itself, or start the pull anywhere on the left side of the screen:
+      // the bird follows how far the finger moves, so there's always room to pull back.
+      const onBird = Math.hypot(e.clientX - sp.x, e.clientY - sp.y) < Math.max(56, r * G.cam.s * 2.6);
+      const leftSide = e.clientX < renderer.W * 0.42 && e.clientY > 64;
+      if (onBird || leftSide) {
+        G.aim = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: rest.x, y: rest.y, pts: null, max: maxPull(), lastSound: 0 };
         if (G.tipTimer > 0) G.tipTimer = Math.min(G.tipTimer, 0.01);
         G.camMode = 'auto';
         Sfx.play('stretch');
@@ -270,8 +287,7 @@
     }
     if (G.aim && G.aim.id === e.pointerId) {
       const sim = G.sim;
-      const w = screenToWorld(e.clientX, e.clientY);
-      let px = w.x - sim.sling.restX, py = w.y - sim.sling.restY;
+      let px = (e.clientX - G.aim.ox) / G.cam.s, py = -(e.clientY - G.aim.oy) / G.cam.s;
       const l = Math.hypot(px, py);
       if (l > G.aim.max) { px *= G.aim.max / l; py *= G.aim.max / l; }
       G.aim.x = sim.sling.restX + px; G.aim.y = sim.sling.restY + py;
@@ -325,18 +341,20 @@
     const sim = G.sim;
     const out = [];
     if (!sim) return out;
-    let start = sim.birdIndex + (sim.state === 'aim' ? 1 : 0);
-    let x = sim.sling.x - 1.0;
-    const shown = sim.birdQueue.slice(start);
-    const hide = G.hiddenQueue;
-    shown.forEach((type, k) => {
-      if (k < hide) return;
+    const start = sim.birdIndex + (sim.state === 'aim' ? 1 : 0);
+    const shown = sim.birdQueue.slice(start).map((type, k) => ({ type, k })).filter(q => q.k >= G.hiddenQueue);
+    // squeeze the line together if it would run off the left edge
+    const natural = shown.reduce((sum, q) => sum + 2 * Sim.BIRDS[q.type].r + 0.25, 0);
+    const room = (sim.sling.x - 0.8) - (sim.view.x1 + 0.3);
+    const squeeze = Math.min(1, room / Math.max(0.01, natural));
+    let x = sim.sling.x - 0.8;
+    for (const { type, k } of shown) {
       const r = Sim.BIRDS[type].r;
-      x -= r;
+      x -= r * squeeze;
       const hop = Math.max(0, Math.sin(G.time * 2.4 + k * 1.7)) * 0.35 * (Math.sin(G.time * 0.7 + k) > 0.3 ? 1 : 0);
-      out.push({ type, r, x, y: sim.sling.y + r + hop, blink: Math.sin(G.time * 1.3 + k * 2) > 0.97, k });
-      x -= r + 0.25;
-    });
+      out.push({ type, r, x, y: sim.sling.y + r + hop, blink: Math.sin(G.time * 1.3 + k * 2) > 0.97, k, index: start + k });
+      x -= (r + 0.25) * squeeze;
+    }
     return out;
   }
 
@@ -349,7 +367,7 @@
     const rest = { x: sim.sling.restX, y: sim.sling.restY };
     if (G.load) {
       const k = Math.min(1, G.load.t / G.load.dur);
-      const fromX = sim.sling.x - 1.0 - r, fromY = sim.sling.y + r;
+      const fromX = sim.sling.x - 0.8 - r, fromY = sim.sling.y + r;
       return { type, r, x: fromX + (rest.x - fromX) * k, y: fromY + (rest.y - fromY) * k + Math.sin(k * Math.PI) * 1.2 };
     }
     if (G.aim) return { type, r, x: G.aim.x, y: G.aim.y };

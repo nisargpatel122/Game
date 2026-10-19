@@ -1,6 +1,6 @@
 /* Angry Flock service worker: caches every game file so it runs offline.
  * Bump VERSION whenever any file changes so phones pick up the update. */
-const VERSION = 'angryflock-v5';
+const VERSION = 'angryflock-v6';
 const FILES = [
   './',
   './index.html',

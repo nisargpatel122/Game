@@ -25,7 +25,8 @@ A bird that touches a pig pops it instantly, however gently. TNT crates explode 
 
 ## Controls
 
-- **Aim and shoot:** drag the bird in the slingshot back and let go. The dotted line shows where it will go.
+- **Aim and shoot:** pull back from the bird, or from anywhere on the left side of the screen, and let go. The bird follows your finger's movement, so there's always room to pull. The dotted line shows where it will go.
+- **Pick your bird:** tap any bird waiting in line to put it in the slingshot next.
 - **Bird power:** tap anywhere while the bird is in the air.
 - **Look around:** drag with one finger on an empty area, or pinch to zoom. The camera goes back to normal on your next shot.
 
