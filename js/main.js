@@ -83,7 +83,6 @@
       case 'nextBird': startLoad(); break;
       case 'win':
         G.ending = { won: true, t: 0, spare: d.spare, popped: 0 };
-        if (G.sim.demolishPct() >= 90) setTimeout(() => { fx.banner('TOTAL DESTRUCTION!', '#ffd23a', 40); Sfx.play('combo', { n: 30 }); }, 250);
         break;
       case 'lose':
         G.ending = { won: false, t: 0, spare: 0, popped: 0 };
@@ -93,7 +92,7 @@
   }
 
   // ---------------- combos & slow motion ----------------
-  const COMBOS = [[5, 'Smash!', '#ffd23a'], [10, 'Crushing!', '#ff9a2a'], [16, 'Demolition!', '#ff6a3a'], [24, 'TOTAL CHAOS!', '#ff4a8a'], [34, 'UNSTOPPABLE!', '#c86bff']];
+  const COMBO_STEPS = [5, 10, 16, 24, 34];
   const combo = { n: 0, t: 0, best: 0 };
 
   function comboBump() {
@@ -101,9 +100,7 @@
     combo.n++;
     combo.t = 0.8;
     combo.best = Math.max(combo.best, combo.n);
-    const tier = COMBOS.filter(c => c[0] === combo.n)[0] || (combo.n > 34 && combo.n % 10 === 4 ? COMBOS[4] : null);
-    if (tier) {
-      fx.banner(`${tier[1]} x${combo.n}`, tier[2], 30 + Math.min(16, combo.n / 2));
+    if (COMBO_STEPS.includes(combo.n) || (combo.n > 34 && combo.n % 10 === 4)) {
       Sfx.play('combo', { n: combo.n });
       Sfx.vibrate(15 + Math.min(40, combo.n * 2));
     }

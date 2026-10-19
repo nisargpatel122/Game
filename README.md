@@ -59,7 +59,7 @@ Add `?level=2-3` to the URL to jump straight to a level.
 |---|---|
 | `js/sim.js` | Physics and game rules: materials, damage, bird powers, explosions, scoring and planet gravity. It runs in Node too, and can snapshot and restore a game between shots. |
 | `js/levels.js` | All the levels, built with small stacking helpers. |
-| `js/render.js` | All the art, drawn in code with no image files, plus destruction effects: debris, dust, screen shake and combo banners. |
+| `js/render.js` | All the art, drawn in code with no image files, plus destruction effects: debris, dust and screen shake. |
 | `js/audio.js` | Sound effects and music, synthesized with WebAudio. |
 | `js/main.js` | Screens, touch input, the camera and save data. |
 | `sw.js` | The offline cache. **Bump `VERSION` whenever you change any file**, or installed copies will keep the old version. |

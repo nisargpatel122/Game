@@ -504,9 +504,9 @@
   };
 
   class FX {
-    constructor() { this.parts = []; this.texts = []; this.banners = []; this.trauma = 0; this.flash = 0; this.time = 0; }
+    constructor() { this.parts = []; this.texts = []; this.trauma = 0; this.flash = 0; this.time = 0; }
 
-    clear() { this.parts.length = 0; this.texts.length = 0; this.banners.length = 0; this.trauma = 0; this.flash = 0; }
+    clear() { this.parts.length = 0; this.texts.length = 0; this.trauma = 0; this.flash = 0; }
 
     add(p) { if (this.parts.length < 1100) this.parts.push(p); }
 
@@ -608,12 +608,6 @@
       this.texts.push({ x, y, str, color: color || '#fff', size: size || 18, life: 1.3, max: 1.3 });
     }
 
-    // Big centred callout, e.g. combos.
-    banner(str, color, size) {
-      this.banners = this.banners.filter(b => b.life > 0.6);
-      this.banners.push({ str, color: color || '#ffd23a', size: size || 34, life: 1.4, max: 1.4 });
-    }
-
     update(dt, sim) {
       this.time += dt;
       for (const p of this.parts) {
@@ -638,8 +632,6 @@
       this.parts = this.parts.filter(p => p.life > 0);
       for (const tx of this.texts) { tx.life -= dt; tx.y += dt * 1.2; }
       this.texts = this.texts.filter(tx => tx.life > 0);
-      for (const b of this.banners) b.life -= dt;
-      this.banners = this.banners.filter(b => b.life > 0);
       this.trauma = Math.max(0, this.trauma - dt * 1.4);
       this.flash = Math.max(0, this.flash - dt);
     }
@@ -837,21 +829,6 @@
         ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineJoin = 'round';
         ctx.strokeText(tx.str, p.x, p.y);
         ctx.fillStyle = tx.color; ctx.fillText(tx.str, p.x, p.y);
-      }
-      ctx.globalAlpha = 1;
-      for (const b of v.fx.banners) {
-        const age = b.max - b.life;
-        const pop = age < 0.18 ? 0.6 + 0.6 * (age / 0.18) : Math.max(1, 1.2 - (age - 0.18) * 1.5);
-        ctx.save();
-        ctx.translate(W / 2, H * 0.3);
-        ctx.rotate(-0.06);
-        ctx.scale(pop, pop);
-        ctx.globalAlpha = Math.min(1, b.life / 0.35);
-        ctx.font = `${b.size}px LilitaOne, "Arial Black", sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-        ctx.lineWidth = 7; ctx.strokeStyle = '#2b1a0e'; ctx.strokeText(b.str, 0, 0);
-        ctx.fillStyle = b.color; ctx.fillText(b.str, 0, 0);
-        ctx.restore();
       }
       ctx.globalAlpha = 1;
       if (v.fx.flash > 0) {
