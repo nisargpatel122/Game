@@ -418,6 +418,10 @@
     } else if (pl.pulling) {
       pl.pull += P.plungerPullSpeed * P.plungerMaxPull * h;
       if (pl.pull > P.plungerMaxPull) pl.pull = P.plungerMaxPull;
+    } else if (pl.target != null) {
+      // follow a touch drag at a limited rate so a flick never fires the ball
+      const d = pl.target - pl.pull, mx = 260 * h;
+      pl.pull += d > mx ? mx : d < -mx ? -mx : d;
     }
     pl.vel = (pl.pull - prev) / h; // + = moving toward the player
   };
@@ -435,6 +439,7 @@
 
   World.prototype.plungerRelease = function () {
     const pl = this.plunger, P = this.P;
+    pl.target = null;
     const frac = pl.pull / P.plungerMaxPull;
     if (frac < 0.02) { pl.pull = 0; return; }
     pl.launching = true;

@@ -165,6 +165,19 @@
         this.world.plungerPull(ev.down);
         if (ev.down) this.fx({ type: 'sound', id: 'plungerPull' });
         break;
+      case 'plungerSet':
+        // touch drag: the plunger eases toward the finger
+        if (!playing || this.rules.selecting || this.world.plunger.launching) return;
+        if (ev.frac > 0.04 && !(this.world.plunger.target > 0)) this.fx({ type: 'sound', id: 'plungerPull' });
+        this.world.plunger.pulling = false;
+        this.world.plunger.target = ev.frac * this.P.plungerMaxPull;
+        break;
+      case 'plungerGo':
+        if (!playing) return;
+        if (this.rules.selecting) { this.rules.selectConfirm(); return; }
+        this.world.plunger.target = null;
+        this.world.plungerRelease();
+        break;
       case 'plungerTap':
         // touch tap without a drag: a firm launch that suits the skill shot
         if (!playing) return;

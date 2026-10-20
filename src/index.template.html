@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07010f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Neon Nebula">
+<meta name="description" content="NEON NEBULA: a neon space pinball game. No ads, ever.">
+<title>Neon Nebula Pinball</title>
+<!--APPLE_ICON-->
+<style>
+:root {
+  --bg: #07010f;
+  --ink: #f4ecff;
+  --dim: #a99cc4;
+  --cyan: #36e2ff;
+  --magenta: #ff3df0;
+  --amber: #ffb238;
+  --lime: #3dff8a;
+  --panel: rgba(14, 4, 34, 0.92);
+  --line: rgba(160, 120, 255, 0.35);
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden;
+  touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+canvas#game { position: fixed; left: 0; top: 0; display: block; outline: none; }
+#safe { position: fixed; left: 0; top: 0; width: 0; height: 0; padding: var(--sat) var(--sar) var(--sab) var(--sal); visibility: hidden; pointer-events: none; }
+.hud-btn {
+  position: fixed; z-index: 5; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line);
+  background: rgba(10, 3, 26, 0.55); color: var(--ink); font-size: 18px; display: none; align-items: center; justify-content: center;
+  top: calc(var(--sat) + 8px); right: calc(var(--sar) + 8px); cursor: pointer;
+}
+.hud-btn.show { display: flex; }
+.overlay {
+  position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center;
+  padding: calc(var(--sat) + 12px) calc(var(--sar) + 12px) calc(var(--sab) + 12px) calc(var(--sal) + 12px);
+  background: radial-gradient(ellipse at 50% 40%, rgba(40, 8, 70, 0.55), rgba(3, 0, 10, 0.82));
+}
+.overlay.show { display: flex; }
+.overlay.clear { background: rgba(3, 0, 10, 0.35); }
+.panel {
+  width: min(460px, 100%); max-height: 100%; overflow-y: auto; touch-action: pan-y; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 18px; padding: 20px 20px 16px; box-shadow: 0 0 40px rgba(255, 61, 240, 0.15), inset 0 0 30px rgba(54, 226, 255, 0.05);
+}
+.panel h2 { margin: 0 0 14px; font-size: 20px; letter-spacing: 3px; text-align: center; color: var(--cyan); text-shadow: 0 0 10px rgba(54, 226, 255, 0.7); }
+.logo { text-align: center; margin: 4px 0 18px; line-height: 0.95; }
+.logo .a, .logo .b { display: block; font-weight: 900; letter-spacing: 6px; font-size: clamp(38px, 12vw, 64px); font-style: italic; }
+.logo .a { color: #fff; text-shadow: 0 0 6px #ff3df0, 0 0 18px #ff3df0, 0 0 40px #b000ff; }
+.logo .b { color: #fff; text-shadow: 0 0 6px #36e2ff, 0 0 18px #36e2ff, 0 0 40px #0066ff; }
+.logo .sub { display: block; margin-top: 10px; font-size: 12px; letter-spacing: 5px; color: var(--dim); }
+.btn {
+  display: block; width: 100%; margin: 8px 0; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(60, 20, 110, 0.55), rgba(25, 6, 55, 0.55)); color: var(--ink); font-size: 16px;
+  letter-spacing: 2px; font-weight: 700; cursor: pointer; text-align: center; font-family: inherit;
+}
+.btn.primary { border-color: rgba(255, 61, 240, 0.8); box-shadow: 0 0 16px rgba(255, 61, 240, 0.35); font-size: 19px; }
+.btn.sel, .btn:focus-visible { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(54, 226, 255, 0.5), 0 0 18px rgba(54, 226, 255, 0.35); }
+.row { display: flex; gap: 8px; }
+.row .btn { flex: 1; }
+.hint { text-align: center; color: var(--dim); font-size: 12px; margin-top: 10px; line-height: 1.5; }
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px; border-bottom: 1px solid rgba(160, 120, 255, 0.15); }
+.setting label { font-size: 15px; }
+.setting input[type=range] { width: 52%; accent-color: var(--magenta); touch-action: none; }
+.toggle { min-width: 92px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(30, 10, 60, 0.6); color: var(--ink); font-weight: 700; letter-spacing: 1px; font-family: inherit; cursor: pointer; }
+.toggle.on { border-color: var(--lime); color: var(--lime); box-shadow: 0 0 10px rgba(61, 255, 138, 0.25); }
+.card { font-size: 13.5px; line-height: 1.45; }
+.card h3 { margin: 14px 0 4px; font-size: 13px; letter-spacing: 2px; color: var(--amber); }
+.card p { margin: 3px 0; }
+.card .k { display: inline-block; min-width: 22px; padding: 0 5px; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; margin: 0 1px; text-align: center; color: #fff; }
+table.scores { width: 100%; border-collapse: collapse; font-size: 15px; }
+table.scores td { padding: 5px 4px; border-bottom: 1px solid rgba(160, 120, 255, 0.12); }
+table.scores td.n { color: var(--dim); width: 26px; }
+table.scores td.s { text-align: right; font-variant-numeric: tabular-nums; }
+table.scores tr.me td { color: var(--amber); }
+.tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tabs .toggle { flex: 1; }
+.big-score { text-align: center; font-size: clamp(28px, 9vw, 40px); font-weight: 900; letter-spacing: 1px; color: #fff; text-shadow: 0 0 12px rgba(255, 178, 56, 0.8); margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.initials { display: flex; justify-content: center; gap: 12px; margin: 14px 0 8px; }
+.initials .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.initials .ch { width: 54px; height: 64px; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 900; border-radius: 10px; border: 1px solid var(--line); background: rgba(30, 8, 60, 0.7); }
+.initials .slot.cur .ch { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 14px rgba(255, 178, 56, 0.4); }
+.initials button { width: 54px; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: rgba(30, 10, 60, 0.6); color: var(--ink); font-size: 16px; cursor: pointer; }
+.ach { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.ach div { padding: 8px; border-radius: 10px; border: 1px solid rgba(160, 120, 255, 0.2); font-size: 12px; opacity: 0.45; }
+.ach div.got { opacity: 1; border-color: rgba(61, 255, 138, 0.6); box-shadow: inset 0 0 12px rgba(61, 255, 138, 0.1); }
+.ach b { display: block; font-size: 12.5px; letter-spacing: 1px; margin-bottom: 2px; }
+.stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; }
+.stats span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; color: var(--cyan); }
+#toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%) translateY(-160%); top: calc(var(--sat) + 10px); transition: transform 0.35s ease, opacity 0.35s ease; pointer-events: none; opacity: 0;
+  background: rgba(14, 4, 34, 0.95); border: 1px solid rgba(61, 255, 138, 0.7); border-radius: 14px; padding: 10px 16px; font-size: 14px; box-shadow: 0 0 20px rgba(61, 255, 138, 0.3); max-width: 90vw; text-align: center; }
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#toast b { color: var(--lime); letter-spacing: 1px; }
+#tuning { position: fixed; z-index: 30; left: calc(var(--sal) + 8px); top: calc(var(--sat) + 8px); width: min(330px, calc(100vw - 16px)); max-height: calc(100vh - var(--sat) - var(--sab) - 16px); overflow-y: auto; display: none; touch-action: pan-y;
+  background: rgba(6, 2, 16, 0.94); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; }
+#tuning.show { display: block; }
+#tuning h4 { margin: 0 0 8px; color: var(--amber); letter-spacing: 2px; }
+#tuning .t-row { display: grid; grid-template-columns: 1fr 1.3fr 46px; gap: 6px; align-items: center; margin: 6px 0; }
+#tuning input[type=range] { width: 100%; touch-action: none; }
+#tuning .btn { padding: 8px; font-size: 13px; margin: 6px 0; }
+#tuning .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--cyan); }
+noscript { color: #fff; display: block; padding: 40px; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="game" tabindex="0" aria-label="Neon Nebula pinball table"></canvas>
+<div id="safe"></div>
+<button class="hud-btn" id="pauseBtn" aria-label="Pause">&#10074;&#10074;</button>
+<div class="overlay" id="ov"></div>
+<div id="toast"></div>
+<div id="tuning"></div>
+<noscript>NEON NEBULA needs JavaScript turned on.</noscript>
+<script>
+/* NEON NEBULA {{VERSION}} - all code below is generated from src/ by tools/build.js */
+{{SCRIPT}}
+</script>
+</body>
+</html>

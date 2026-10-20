@@ -15,6 +15,17 @@ module.exports = {
     'src/game/game.js',
     'src/game/bot.js',
     'src/game/dmd.js',
+    'src/game/achievements.js',
   ],
-  browser: [],
+  browser: [
+    'src/browser/storage.js',
+    'src/browser/audio.js',
+    'src/browser/music.js',
+    'src/browser/art.js',
+    'src/browser/fx.js',
+    'src/browser/render.js',
+    'src/browser/input.js',
+    'src/browser/ui.js',
+    'src/browser/main.js',
+  ],
 };
