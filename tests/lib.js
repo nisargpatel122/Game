@@ -39,9 +39,20 @@ function makeWorld(overrides) {
   return { P, T, w };
 }
 
-// Is (x, y) inside the cabinet outline (ball centre, with a small tolerance)?
+function inPoly(poly, x, y) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a[1] > y) !== (b[1] > y) && x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0]) c = !c;
+  }
+  return c;
+}
+
+// Is (x, y) inside the cabinet outline (ball centre, with a small tolerance)
+// and outside every solid block?
 function insideCabinet(T, x, y, r, tol) {
   tol = tol == null ? 2.5 : tol;
+  for (const s of T.solids || []) if (inPoly(s, x, y)) return false;
   const a = T.landmarks.arc;
   if (x < 12 + r - tol || x > 498 - r + tol || y > T.height + 2) return false;
   if (y < a.cy) {
@@ -94,7 +105,7 @@ function installChecker(w, opts) {
     for (const b of w.balls) {
       if (b.state !== 'play') continue;
       const mv = Math.hypot(b.x - b.px, b.y - b.py);
-      if (mv > (stats.maxMove || 0)) stats.maxMove = mv;
+      if (mv > (stats.maxMove || 0)) { stats.maxMove = mv; stats.maxMoveAt = `(${b.px.toFixed(1)},${b.py.toFixed(1)})->(${b.x.toFixed(1)},${b.y.toFixed(1)}) layer ${b.layer} v=${Math.hypot(b.vx, b.vy).toFixed(0)}`; }
       if (b.layer === 0 && !insideCabinet(w.table, b.x, b.y, b.r)) {
         stats.escapes++; sample('escape', b);
       }
@@ -132,4 +143,4 @@ function installChecker(w, opts) {
   return stats;
 }
 
-module.exports = { NN, test, run, note, assert, makeWorld, insideCabinet, freeSpot, installChecker };
+module.exports = { inPoly, NN, test, run, note, assert, makeWorld, insideCabinet, freeSpot, installChecker };

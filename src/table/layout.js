@@ -21,6 +21,7 @@
       drainY: 1012, drainMaxX: 463,
       colliders: [], flippers: [], sensors: [], ramps: [], wires: {}, spinners: [],
       draw: { walls: [], posts: [], slings: [], guides: [] },
+      solids: [],                       // closed polygons the ball can never be inside
       landmarks: {},
     };
     const C = T.colliders;
@@ -54,10 +55,11 @@
     add(S.arc(ARC_C[0], ARC_C[1], ARC_R, Math.PI, Math.PI, { mat: 'wall', r: 0 }));
     T.draw.walls.push({ arc: [ARC_C[0], ARC_C[1], ARC_R, Math.PI, Math.PI], r: 0, color: 'magenta', neon: true, outer: true });
     // Outer side walls (zero thickness, the cabinet is beyond them)
-    add(S.seg(12, 255, 12, 1060, { mat: 'wall' }));
+    // left cabinet wall below the orbit mouth (the upper part comes with the orbit)
+    add(S.seg(12, 700, 12, 1060, { mat: 'wall' }));
     add(S.seg(498, 255, 498, 1068, { mat: 'wall' }));
     add(S.seg(466, 1068, 498, 1068, { mat: 'wall' }));
-    T.draw.walls.push({ pts: [[12, 255], [12, 1000]], r: 0, color: 'magenta', neon: true, outer: true });
+    T.draw.walls.push({ pts: [[12, 700], [12, 1000]], r: 0, color: 'magenta', neon: true, outer: true });
     T.draw.walls.push({ pts: [[498, 255], [498, 1068]], r: 0, color: 'magenta', neon: true, outer: true });
     T.landmarks.arc = { cx: ARC_C[0], cy: ARC_C[1], R: ARC_R };
 
@@ -132,6 +134,7 @@
       add(S.circle(br[0], br[1], 7, { mat: 'rubber', kind: 'post' }));
       add(S.circle(bl[0], bl[1], 6, { mat: 'rubber', kind: 'post' }));
       T.draw.slings.push({ id: id, top: top, bl: bl, br: br, flip: flip });
+      T.solids.push([top, bl, br]);
     };
     sling('slingL', TOP, BL, BR, false);
     sling('slingR', [mx(TOP[0]), TOP[1]], [mx(BL[0]), BL[1]], [mx(BR[0]), BR[1]], true);

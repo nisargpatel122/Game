@@ -20,52 +20,64 @@ All tuning values live in `src/core/settings.js`.
 
 ```
             .-------------- top arc ---------------.
-          /  ORION LANES [1][2][3]                  \
-         |       (A)  (B)       DOCKING BAY  .--.     |
-   LEFT  |          (C)    BLACK HOLE     (right ramp |  shooter
-   ORBIT |  left ramp       (scoop)         apex)     |  lane
-  spinner| (apex+wire)                   upper flip  RO|  |
-         |   LEFT RAMP mouth        RIGHT RAMP mouth   |  |
-         |                       drop targets (3)     |  |
-         | planets (2)        planets (2)            |  |
-         |                                           |  |
-     kick| [sling]   mission ring / inserts   [sling] |  |
-     back|in                                       in |  |
-         |out    \LEFT FLIPPER   RIGHT FLIPPER/    out | plunger
-         '----------------  drain  ----------------'
+          /   ORION LANES [1][2][3]                  \
+         |      (A)       (B)            inner arc     |
+   LEFT  |           (C)                   COMET LANE  |  shooter
+   ORBIT |  left ramp    BLACK HOLE        right ramp  |  lane
+  spinner|  (apex+wire)  (scoop, funnel)  (apex+wire) RO  |
+    funnel\                                upper flip /  |
+   planets |  LEFT RAMP mouth    RIGHT RAMP mouth     | drops
+           |                                          |  |
+     kick  | [sling]   mission ring / inserts   [sling] |  |
+     back  |in                                     in |  |
+           |out   \LEFT FLIPPER   RIGHT FLIPPER/   out | plunger
+           '----------------  drain  ----------------'
 ```
 
-- **Left orbit** (along the left wall, with spinner) and **right orbit** (inside the
-  shooter lane) join over the top arc. A completed orbit comes down the other side and
-  rides a wire return into that side's inlane.
-- **Left ramp** (shot from the right flipper) returns on a wire to the **left** inlane.
-  **Right ramp** (shot from the left flipper) returns to the **right** inlane. Ramps sit
-  on their own layer: drawn above the playfield, the ball only touches ramp walls while
-  on them, and it is drawn bigger with an offset shadow.
-- **Black Hole scoop** at upper centre: shot up the middle from either flipper, and the
-  natural shot of the **upper flipper**. It holds the ball, plays a display moment, then
-  kicks it out toward the left flipper.
-- **Pop bumpers**: a cluster of three under the Orion lanes.
-- **Asteroid drop targets**: bank of 3 below the upper flipper, facing the left flipper.
-- **Planet stand-ups**: 4 targets, 2 left and 2 around the centre.
+The geometry was shaped by the headless harness (`tests/table.test.js`), which
+fires thousands of balls and sweeps cradle shots from every flipper.
+
+- **Orbits.** Left orbit along the cabinet wall (with spinner), right orbit inside
+  the shooter lane. Both have funnel mouths: the outer wall leans out and the inner
+  wall flares the other way, so cross-court shots between about 117 and 132 degrees
+  are guided up the lane. A completed orbit comes down the other side and rides a
+  wire return into that side's inlane. Failed orbits roll back out toward the centre.
+- **Ramps.** Mirror images on their own layers (drawn above the playfield; the ball
+  only touches ramp walls while on them, and is drawn bigger with an offset shadow).
+  Each mouth sits above its own flipper, so the strong "late" shot from that flipper
+  goes up its ramp; the opposite flipper makes it cross-court. Left ramp returns to
+  the left inlane, right ramp to the right inlane.
+- **Black Hole scoop** on the centre line with a funnel mouth: the centre shot from
+  either flipper. Holds the ball, plays a display moment, kicks out to the left
+  flipper.
+- **Comet Lane.** A short lane straight above the **upper flipper** (right side,
+  under the right ramp). The upper flipper's own shot: the ball rises into the inner
+  arc and is thrown back over the Orion lanes into the bumpers.
+- **Pop bumpers**: three under the Orion lanes, offset so a ball never drops straight
+  back into a lane.
+- **Asteroid drop targets**: bank of three on the wall face below the right orbit
+  funnel, facing the left flipper (shots a little too wide for the right orbit).
+- **Planet stand-ups**: two on the wall face below the left orbit funnel (mirror of
+  the drops), two at the tips of the Black Hole's funnel.
 - **Slingshots**, inlanes and outlanes on both sides. **Kickback** in the left outlane.
 - **Shooter lane** on the right with a one-way gate at the top.
 
 ## Shot map and flow
 
-| Shot | Best flipper | Where it returns |
+| Shot | Natural flipper | Where it returns |
 |---|---|---|
-| Left orbit | right | right inlane (wire) -> right flipper |
-| Left ramp | right | left inlane -> left flipper |
-| Black Hole | either, upper | scoop kicks out to the left flipper |
-| Right ramp | left | right inlane -> right flipper |
-| Right orbit | left | left inlane (wire) -> left flipper |
-| Drop targets | left | rebound |
-| Planets | either | rebound |
+| Left ramp | left (late), right (cross) | left inlane -> left flipper |
+| Right ramp | right (late), left (cross) | right inlane -> right flipper |
+| Left orbit | right (cross), left (backhand) | right inlane (wire) -> right flipper |
+| Right orbit | left (cross), right (backhand) | left inlane (wire) -> left flipper |
+| Black Hole | either (centre) | kicks out to the left flipper |
+| Comet Lane | upper flipper | over the lanes into the bumpers |
+| Drops | left (wide cross) | rebound |
+| Planets | right (wide cross), centre | rebound |
 
-Figure-8 flow: right flipper left ramp -> left flipper right ramp -> right flipper ...
-Orbits loop back to the same flipper. Ramps, orbits and the Black Hole are **major
-shots** that build combos.
+Each flipper has an easy repeatable shot (its own ramp) and a figure-8 (cross-court
+to the other ramp, which feeds the other flipper). Ramps, orbits, the Black Hole and
+the Comet Lane are **major shots** that build combos.
 
 ## Rules
 
@@ -95,6 +107,8 @@ shots** that build combos.
   beat). Asteroids add a ball.
 - **Extra ball**: lit at the left orbit after the 2nd mission and the first super
   jackpot. Crossing the replay score also awards one.
+- **Comet Lane** (upper flipper): each shot scores a growing comet value and spots an
+  Orion lane.
 - **Tilt**: nudges add to a tilt bob that decays. Too much gives DANGER warnings. The
   third warning tilts: flippers die and the bonus for that ball is lost.
 - **Bonus**: counts up item by item, times the multiplier. Hold both flippers to skip.

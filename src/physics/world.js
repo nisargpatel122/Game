@@ -50,7 +50,22 @@
     this.lastSubsteps = 1;
     this.maxSubstepsSeen = 0;
     this.debugCross = null; // set to an array to record wall crossings (tests)
+    this.rng = NN.U.rng(table.seed || 1);
+    this.gateColliders = {};
+    for (const c of this.colliders) if (c.oneWay) this.gateColliders[c.id] = c;
   }
+
+  // Real coils never kick exactly the same twice: rotate the kick direction a few
+  // degrees and vary its strength. This also stops perfect bumper/wall loops.
+  World.prototype.kick = function (b, nx, ny, speed, jitterDeg) {
+    const a = (this.rng() - 0.5) * 2 * jitterDeg * Math.PI / 180;
+    const c = Math.cos(a), s = Math.sin(a);
+    const kx = nx * c - ny * s, ky = nx * s + ny * c;
+    const sp = speed * (0.92 + this.rng() * 0.16);
+    const cur = b.vx * kx + b.vy * ky;
+    const add = sp - cur;
+    if (add > 0) { b.vx += add * kx; b.vy += add * ky; }
+  };
 
   World.prototype.updateGravity = function () {
     const P = this.P;
@@ -250,18 +265,29 @@
         if (pen <= 0) continue;
         const nx = scratch.nx, ny = scratch.ny;
         if (c.oneWay) {
-          // gate: only blocks balls on its normal side moving against the normal
+          // Gate: only blocks balls on its normal side moving against the normal.
+          // A ball that started through from the open side keeps passing until it
+          // is fully clear, so it is never shoved while straddling the flap.
+          const gp = b.gatePass || (b.gatePass = {});
           const side = (b.x - c.ax) * c.oneWay.nx + (b.y - c.ay) * c.oneWay.ny;
-          if (side < 0) {
-            if (!c.passing) { c.passing = true; this.gateSwing(c, b); }
+          if (side < 0 || gp[c.id]) {
+            if (!gp[c.id]) { gp[c.id] = true; this.gateSwing(c, b); }
             continue;
           }
-          if (b.vx * c.oneWay.nx + b.vy * c.oneWay.ny > 0) { c.passing = false; continue; }
+          if (b.vx * c.oneWay.nx + b.vy * c.oneWay.ny > 0) continue;
         }
         this.resolveStatic(b, c, nx, ny, pen);
         any = true;
       }
       if (!any) break;
+    }
+    if (b.gatePass) {
+      for (const id in b.gatePass) {
+        if (!b.gatePass[id]) continue;
+        const g = this.gateColliders[id];
+        S.closest(g, b.x, b.y, scratch);
+        if (scratch.d >= br) b.gatePass[id] = false;
+      }
     }
   };
 
@@ -282,22 +308,24 @@
         const e = this.restitution(c.mat, vin);
         const jn = (1 + e) * vin;
         b.vx += jn * nx; b.vy += jn * ny;
-        // Coulomb friction on the tangential velocity, capped at the rolling limit (2/7)
-        const tx = -ny, ty = nx;
-        const vt = b.vx * tx + b.vy * ty;
-        let f = c.mat.mu * jn;
-        const lim = Math.abs(vt) * (2 / 7);
-        if (f > lim) f = lim;
-        const dv = vt > 0 ? -f : f;
-        b.vx += dv * tx; b.vy += dv * ty;
+        // Impact friction on the tangential velocity, capped at the rolling limit
+        // (2/7). Resting contacts get none: a ball pressed against a wall or post
+        // rolls along it instead of sticking.
+        if (vin > this.P.restThreshold) {
+          const tx = -ny, ty = nx;
+          const vt = b.vx * tx + b.vy * ty;
+          let f = c.mat.mu * jn;
+          const lim = Math.abs(vt) * (2 / 7);
+          if (f > lim) f = lim;
+          const dv = vt > 0 ? -f : f;
+          b.vx += dv * tx; b.vy += dv * ty;
+        }
       }
       const t = this.time;
       if (kind === 'bumper') {
         if (t - c.lastHit > P.bumperCooldown) {
           c.lastHit = t;
-          const cur = b.vx * nx + b.vy * ny;
-          const add = P.bumperKick - cur;
-          if (add > 0) { b.vx += add * nx; b.vy += add * ny; }
+          this.kick(b, nx, ny, P.bumperKick, 8);
           this.emit({ type: 'bumper', id: c.id, ball: b, x: b.x - nx * b.r, y: b.y - ny * b.r, speed: vin });
           b.lastActive = t;
         }
@@ -305,16 +333,15 @@
       }
       if (kind === 'sling' && vin > P.slingThreshold && t - c.lastHit > P.slingCooldown) {
         c.lastHit = t;
-        const cur = b.vx * nx + b.vy * ny;
-        const add = P.slingKick - cur;
-        if (add > 0) { b.vx += add * nx; b.vy += add * ny; }
+        this.kick(b, nx, ny, P.slingKick, 4);
         this.emit({ type: 'sling', id: c.id, ball: b, x: b.x - nx * b.r, y: b.y - ny * b.r, speed: vin });
         b.lastActive = t;
         return;
       }
       if (vin > 60) {
         if (kind === 'target' || kind === 'drop') {
-          if (t - c.lastHit > 0.12) {
+          // stand-ups and drops only register when struck on the face
+          if (t - c.lastHit > 0.12 && (!c.front || nx * c.front.nx + ny * c.front.ny > 0.3)) {
             c.lastHit = t;
             this.emit({ type: kind, id: c.id, ball: b, speed: vin, x: b.x - nx * b.r, y: b.y - ny * b.r });
             b.lastActive = t;
@@ -362,13 +389,15 @@
       const e = this.restitution(f.mat, vin);
       const jn = (1 + e) * vin;
       rvx += jn * nx; rvy += jn * ny;
-      const tx = -ny, ty = nx;
-      const vt = rvx * tx + rvy * ty;
-      let fr = f.mat.mu * jn;
-      const limf = Math.abs(vt) * (2 / 7);
-      if (fr > limf) fr = limf;
-      const dv = vt > 0 ? -fr : fr;
-      rvx += dv * tx; rvy += dv * ty;
+      if (vin > this.P.restThreshold) {
+        const tx = -ny, ty = nx;
+        const vt = rvx * tx + rvy * ty;
+        let fr = f.mat.mu * jn;
+        const limf = Math.abs(vt) * (2 / 7);
+        if (fr > limf) fr = limf;
+        const dv = vt > 0 ? -fr : fr;
+        rvx += dv * tx; rvy += dv * ty;
+      }
       b.vx = rvx + ux; b.vy = rvy + uy;
       if (vin > 120) this.emit({ type: 'hit', kind: 'flipper', id: f.id, ball: b, speed: vin, x: b.x - nx * br, y: b.y - ny * br });
       if (Math.abs(f.omega) > 5) b.lastActive = this.time;
@@ -484,7 +513,7 @@
     if (!acts) return;
     for (const a of acts) {
       if (a.dir && a.dir !== dir) continue;
-      if (a.layer != null && a.fromLayer != null && b.layer !== a.fromLayer) continue;
+      if (a.fromLayer != null && b.layer !== a.fromLayer) continue;
       if (a.do === 'layer') {
         b.layer = a.to;
       } else if (a.do === 'flag') {

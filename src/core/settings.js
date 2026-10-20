@@ -35,8 +35,8 @@
     flipperTipRadius: 7,
     flipperRestDeg: 30,        // degrees below horizontal at rest
     flipperUpDeg: 28,          // degrees above horizontal when held up
-    flipperUpAccel: 5000,      // rad/s^2 while the coil is energised
-    flipperUpMaxSpeed: 50,     // rad/s (tip speed about 3.9 m/s)
+    flipperUpAccel: 2600,      // rad/s^2 while the coil is energised (steady pull through the stroke)
+    flipperUpMaxSpeed: 75,     // rad/s cap (end-of-stroke tip speed about 5.5 m/s)
     flipperDownAccel: 900,    // rad/s^2 return spring
     flipperDownMaxSpeed: 22,   // rad/s
     flipperRestBounce: 0.2,    // bounce off the rest stop

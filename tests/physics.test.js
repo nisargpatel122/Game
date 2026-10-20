@@ -51,6 +51,7 @@ test('random balls at every surface: nothing tunnels, sticks inside or escapes',
   }
   note(`${N} balls, ${stats.substeps} substeps, max move/substep ${stats.maxMove.toFixed(2)} mm (limit ${(P.ballRadius * P.maxSubstepMove).toFixed(2)}), max substeps ${w.maxSubstepsSeen}, crossing fixes ${w.crossFixes || 0}, drained ${drained}`);
   for (const s of stats.samples) note(s);
+  note('largest move: ' + stats.maxMoveAt);
   assert(stats.crossings === 0, `${stats.crossings} wall crossings`);
   assert(stats.inside === 0, `${stats.inside} balls inside solids`);
   assert(stats.flipperInside === 0, `${stats.flipperInside} balls inside flippers`);

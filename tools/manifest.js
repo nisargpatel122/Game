@@ -8,6 +8,7 @@ module.exports = {
     'src/physics/flipper.js',
     'src/physics/world.js',
     'src/table/layout.js',
+    'src/table/upper.js',
   ],
   browser: [],
 };
