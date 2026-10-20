@@ -105,6 +105,7 @@
       case 'stats': this.open('stats'); break;
       case 'settings': this.open('settings'); break;
       case 'install': app.promptInstall(); break;
+      case 'fullscreen': app.enterFullscreen(); break;
       case 'iosinstall': this.open('iosinstall'); break;
       case 'back': this.back(); break;
       case 'resume': app.resume(); break;
@@ -214,6 +215,7 @@
       '<button class="btn primary" data-act="resume">RESUME</button>' +
       '<button class="btn" data-act="restart">RESTART</button>' +
       '<button class="btn" data-act="settings">SETTINGS</button>' +
+      (this.app.canFullscreen() ? '<button class="btn" data-act="fullscreen">FULL SCREEN</button>' : '') +
       '<button class="btn" data-act="howto">HOW TO PLAY</button>' +
       '<button class="btn" data-act="quit">QUIT TO TITLE</button>';
   };

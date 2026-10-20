@@ -43,6 +43,8 @@
     let rz = null;
     const onResize = () => { clearTimeout(rz); rz = setTimeout(() => app.renderer.resize(), 120); };
     window.addEventListener('resize', onResize);
+    for (const ev of ['pointerup', 'touchend', 'click']) document.addEventListener(ev, app.retryFullscreen, { passive: true, capture: true });
+    document.addEventListener('fullscreenchange', () => { if (document.fullscreenElement) app.fsTries = 0; });
     window.addEventListener('orientationchange', onResize);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', app.onVisibility);
@@ -183,6 +185,7 @@
     app.hintsShown = true;
     NN.Music.setState(app.settings.music > 0 ? 'normal' : 'off');
     app.requestWakeLock();
+    app.fsTries = 3;
     app.goFullscreen();
     app.canvas.focus();
   };
@@ -191,9 +194,31 @@
   // desktops are left alone; iPhones do not support this and skip it)
   app.goFullscreen = function () {
     const d = document, el = d.documentElement;
-    if (!app.isTouch() || !d.fullscreenEnabled || d.fullscreenElement || !el.requestFullscreen) return;
-    if (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) return;
+    if (!app.isTouch() || !d.fullscreenEnabled || d.fullscreenElement || !el.requestFullscreen) { app.fsTries = 0; return; }
+    if (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) { app.fsTries = 0; return; }
+    app.fsTries--;
     try { const p = el.requestFullscreen({ navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed */ }
+  };
+
+  // the pause menu's FULL SCREEN button (for anyone who left full screen, or
+  // a desktop window); not offered to installed apps, which already have it
+  app.canFullscreen = function () {
+    const d = document;
+    return !!(d.fullscreenEnabled && !d.fullscreenElement && d.documentElement.requestFullscreen && !app.isStandalone());
+  };
+  app.enterFullscreen = function () {
+    const done = () => { if (app.ui.screen === 'pause') app.ui.render('pause'); };
+    try {
+      const p = document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      if (p && p.then) p.then(done, () => {}); else done();
+    } catch (err) { /* not allowed */ }
+  };
+
+  // A game started by touching the table asks for full screen as the finger
+  // goes down, which browsers refuse (they only allow it once the finger
+  // lifts), so try again on the next release, a few times at most.
+  app.retryFullscreen = function () {
+    if (app.fsTries > 0 && !document.fullscreenElement && app.game.state === 'playing') app.goFullscreen();
   };
 
   app.togglePause = function () {

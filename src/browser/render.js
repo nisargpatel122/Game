@@ -54,16 +54,19 @@
     const portrait = W / H < 0.95;
     L.portrait = portrait;
     if (portrait) {
-      let dmdH = Math.round(Math.min(Math.max(H * 0.07, 36), 80));
+      // phones: every pixel of height goes to the table. The strips of empty
+      // cabinet above the top arch and below the plunger may fall off screen.
+      const CUT_T = 6, CUT_B = 4;
+      let dmdH = Math.round(Math.min(Math.max(H * 0.064, 34), 76));
       let dmdW = dmdH * 4;
       const maxW = W - sa.l - sa.r - 112;
       if (dmdW > maxW) { dmdW = maxW; dmdH = dmdW / 4; }
-      L.dmd = { x: (W - dmdW) / 2, y: sa.t + 6, w: dmdW, h: dmdH };
-      const top = L.dmd.y + dmdH + 6;
+      L.dmd = { x: (W - dmdW) / 2, y: sa.t + 4, w: dmdW, h: dmdH };
+      const top = L.dmd.y + dmdH + 4;
       const availH = H - top - Math.max(0, sa.b - 14);
-      const availW = W - sa.l - sa.r - 2;
-      const s = Math.min(availW / 510, availH / 1070);
-      L.pf = { s: s, x: (W - 510 * s) / 2, y: top + Math.max(0, (availH - 1070 * s) * 0.25) };
+      const availW = W - sa.l - sa.r;
+      const s = Math.min(availW / 500, availH / (1070 - CUT_T - CUT_B));
+      L.pf = { s: s, x: (W - 510 * s) / 2, y: top - CUT_T * s + Math.max(0, (availH - (1070 - CUT_T - CUT_B) * s) * 0.25) };
       L.pauseBtn = { right: Math.max(8, (W - dmdW) / 2 - 52), top: sa.t + 6 + (dmdH - 44) / 2 };
     } else {
       const availH = H - sa.t - sa.b - 12;

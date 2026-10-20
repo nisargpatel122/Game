@@ -132,7 +132,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
 <div id="tuning"></div>
 <noscript>NEON NEBULA needs JavaScript turned on.</noscript>
 <script>
-/* NEON NEBULA v1.0.0-a96d58a4 - all code below is generated from src/ by tools/build.js */
+/* NEON NEBULA v1.0.0-d9e67c98 - all code below is generated from src/ by tools/build.js */
 
 /* ---- src/core/settings.js ---- */
 /*
@@ -5773,16 +5773,19 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     const portrait = W / H < 0.95;
     L.portrait = portrait;
     if (portrait) {
-      let dmdH = Math.round(Math.min(Math.max(H * 0.07, 36), 80));
+      // phones: every pixel of height goes to the table. The strips of empty
+      // cabinet above the top arch and below the plunger may fall off screen.
+      const CUT_T = 6, CUT_B = 4;
+      let dmdH = Math.round(Math.min(Math.max(H * 0.064, 34), 76));
       let dmdW = dmdH * 4;
       const maxW = W - sa.l - sa.r - 112;
       if (dmdW > maxW) { dmdW = maxW; dmdH = dmdW / 4; }
-      L.dmd = { x: (W - dmdW) / 2, y: sa.t + 6, w: dmdW, h: dmdH };
-      const top = L.dmd.y + dmdH + 6;
+      L.dmd = { x: (W - dmdW) / 2, y: sa.t + 4, w: dmdW, h: dmdH };
+      const top = L.dmd.y + dmdH + 4;
       const availH = H - top - Math.max(0, sa.b - 14);
-      const availW = W - sa.l - sa.r - 2;
-      const s = Math.min(availW / 510, availH / 1070);
-      L.pf = { s: s, x: (W - 510 * s) / 2, y: top + Math.max(0, (availH - 1070 * s) * 0.25) };
+      const availW = W - sa.l - sa.r;
+      const s = Math.min(availW / 500, availH / (1070 - CUT_T - CUT_B));
+      L.pf = { s: s, x: (W - 510 * s) / 2, y: top - CUT_T * s + Math.max(0, (availH - (1070 - CUT_T - CUT_B) * s) * 0.25) };
       L.pauseBtn = { right: Math.max(8, (W - dmdW) / 2 - 52), top: sa.t + 6 + (dmdH - 44) / 2 };
     } else {
       const availH = H - sa.t - sa.b - 12;
@@ -6766,6 +6769,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
       case 'stats': this.open('stats'); break;
       case 'settings': this.open('settings'); break;
       case 'install': app.promptInstall(); break;
+      case 'fullscreen': app.enterFullscreen(); break;
       case 'iosinstall': this.open('iosinstall'); break;
       case 'back': this.back(); break;
       case 'resume': app.resume(); break;
@@ -6875,6 +6879,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
       '<button class="btn primary" data-act="resume">RESUME</button>' +
       '<button class="btn" data-act="restart">RESTART</button>' +
       '<button class="btn" data-act="settings">SETTINGS</button>' +
+      (this.app.canFullscreen() ? '<button class="btn" data-act="fullscreen">FULL SCREEN</button>' : '') +
       '<button class="btn" data-act="howto">HOW TO PLAY</button>' +
       '<button class="btn" data-act="quit">QUIT TO TITLE</button>';
   };
@@ -7129,6 +7134,8 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     let rz = null;
     const onResize = () => { clearTimeout(rz); rz = setTimeout(() => app.renderer.resize(), 120); };
     window.addEventListener('resize', onResize);
+    for (const ev of ['pointerup', 'touchend', 'click']) document.addEventListener(ev, app.retryFullscreen, { passive: true, capture: true });
+    document.addEventListener('fullscreenchange', () => { if (document.fullscreenElement) app.fsTries = 0; });
     window.addEventListener('orientationchange', onResize);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
     document.addEventListener('visibilitychange', app.onVisibility);
@@ -7269,6 +7276,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     app.hintsShown = true;
     NN.Music.setState(app.settings.music > 0 ? 'normal' : 'off');
     app.requestWakeLock();
+    app.fsTries = 3;
     app.goFullscreen();
     app.canvas.focus();
   };
@@ -7277,9 +7285,31 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
   // desktops are left alone; iPhones do not support this and skip it)
   app.goFullscreen = function () {
     const d = document, el = d.documentElement;
-    if (!app.isTouch() || !d.fullscreenEnabled || d.fullscreenElement || !el.requestFullscreen) return;
-    if (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) return;
+    if (!app.isTouch() || !d.fullscreenEnabled || d.fullscreenElement || !el.requestFullscreen) { app.fsTries = 0; return; }
+    if (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) { app.fsTries = 0; return; }
+    app.fsTries--;
     try { const p = el.requestFullscreen({ navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed */ }
+  };
+
+  // the pause menu's FULL SCREEN button (for anyone who left full screen, or
+  // a desktop window); not offered to installed apps, which already have it
+  app.canFullscreen = function () {
+    const d = document;
+    return !!(d.fullscreenEnabled && !d.fullscreenElement && d.documentElement.requestFullscreen && !app.isStandalone());
+  };
+  app.enterFullscreen = function () {
+    const done = () => { if (app.ui.screen === 'pause') app.ui.render('pause'); };
+    try {
+      const p = document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      if (p && p.then) p.then(done, () => {}); else done();
+    } catch (err) { /* not allowed */ }
+  };
+
+  // A game started by touching the table asks for full screen as the finger
+  // goes down, which browsers refuse (they only allow it once the finger
+  // lifts), so try again on the next release, a few times at most.
+  app.retryFullscreen = function () {
+    if (app.fsTries > 0 && !document.fullscreenElement && app.game.state === 'playing') app.goFullscreen();
   };
 
   app.togglePause = function () {
