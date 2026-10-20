@@ -50,7 +50,7 @@
     this.sel = 0;
     const html = this['scr_' + name](opts || {});
     this.ov.innerHTML = '<div class="panel" role="dialog">' + html + '</div>';
-    this.ov.className = 'overlay show' + (name === 'title' || name === 'gameover' ? ' clear' : '');
+    this.ov.className = 'overlay show' + (name === 'title' || name === 'gameover' ? ' clear' : '') + (name === 'title' ? ' title' : '');
     this.wire();
   };
 
@@ -233,7 +233,7 @@
           '<div class="ch">' + this.initials.chars[i] + '</div><button data-act="ini-down" data-i="' + i + '" aria-label="previous letter">▼</button></div>';
       }
       h += '</div><button class="btn primary" data-act="ini-ok">OK</button>';
-      h += '<div class="hint">Type your initials, or use ← → to change and Space to confirm</div>';
+      h += '<div class="hint">' + (this.app.isTouch() ? 'Tap ▲ ▼ to pick each letter, then OK' : 'Type your initials, or use ← → to change and Space to confirm') + '</div>';
     } else {
       if (o.rank != null) h += '<div class="hint" style="color:#ffb238;font-size:14px">HIGH SCORE #' + (o.rank + 1) + '</div>';
       const g = o.stats || {};
@@ -291,18 +291,47 @@
   };
 
   // --------------------------------------------------------------- toast ---
-  UI.prototype.toast = function (html) {
-    this.toastQ.push(html);
+  // deferred toasts (achievements) wait for a quiet moment when the only place
+  // to show them would be over the playfield
+  UI.prototype.toast = function (html, defer, sound) {
+    this.toastQ.push({ html: html, defer: !!defer, sound: sound });
     if (!this.toastBusy) this.nextToast();
   };
   UI.prototype.nextToast = function () {
     const el = $('toast');
-    const h = this.toastQ.shift();
-    if (!h) { this.toastBusy = false; return; }
+    const q = this.toastQ[0];
+    if (!q) { this.toastBusy = false; return; }
     this.toastBusy = true;
+    const g = this.app.game, L = this.app.renderer && this.app.renderer.L;
+    if (q.defer && L && !L.panelL && g.state === 'playing' && !g.paused) {
+      setTimeout(() => this.nextToast(), 500);
+      return;
+    }
+    this.toastQ.shift();
+    const h = q.html;
+    if (q.sound) NN.Audio.play(q.sound);
     el.innerHTML = h;
+    this.placeToast(el);
     el.classList.add('show');
     setTimeout(() => { el.classList.remove('show'); setTimeout(() => this.nextToast(), 400); }, 2600);
+  };
+
+  // keep toasts off the score display and the playfield where we can: in the
+  // left side panel on wide screens, else just under the dot-matrix display
+  UI.prototype.placeToast = function (el) {
+    const R = this.app.renderer, L = R && R.L;
+    if (!L) return;
+    if (L.panelL) {
+      el.style.left = (L.panelL.x + L.panelL.w / 2) + 'px';
+      el.style.top = (L.panelL.y + Math.max(0, Math.min(L.panelL.h - 110, 330))) + 'px';
+      el.style.maxWidth = Math.max(200, L.panelL.w) + 'px';
+      el.className = '';
+    } else {
+      el.style.left = '50%';
+      el.style.top = (L.dmd.y + L.dmd.h + 8) + 'px';
+      el.style.maxWidth = '';
+      el.className = 'compact';
+    }
   };
 
   // -------------------------------------------------------------- tuning ---

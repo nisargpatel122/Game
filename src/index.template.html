@@ -48,7 +48,16 @@ canvas#game { position: fixed; left: 0; top: 0; display: block; outline: none; }
   background: radial-gradient(ellipse at 50% 40%, rgba(40, 8, 70, 0.55), rgba(3, 0, 10, 0.82));
 }
 .overlay.show { display: flex; }
-.overlay.clear { background: rgba(3, 0, 10, 0.35); }
+.overlay.clear { background: rgba(3, 0, 10, 0.25); }
+/* the title card lets the attract-mode light show glow through it */
+.overlay.title .panel { background: rgba(14, 4, 34, 0.66); }
+.overlay.title .btn { background: linear-gradient(180deg, rgba(60, 20, 110, 0.45), rgba(25, 6, 55, 0.4)); }
+@media (max-aspect-ratio: 1/1) {
+  .overlay.title { align-items: flex-end; padding-bottom: calc(var(--sab) + 18px); }
+  .overlay.title .logo { margin: 0 0 12px; }
+  .overlay.title .logo .a, .overlay.title .logo .b { font-size: clamp(34px, 10.5vw, 60px); }
+  .overlay.title .btn { padding: 11px 12px; margin: 6px 0; }
+}
 .panel {
   width: min(460px, 100%); max-height: 100%; overflow-y: auto; touch-action: pan-y; background: var(--panel);
   border: 1px solid var(--line); border-radius: 18px; padding: 20px 20px 16px; box-shadow: 0 0 40px rgba(255, 61, 240, 0.15), inset 0 0 30px rgba(54, 226, 255, 0.05);
@@ -100,6 +109,7 @@ table.scores tr.me td { color: var(--amber); }
 #toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%) translateY(-160%); top: calc(var(--sat) + 10px); transition: transform 0.35s ease, opacity 0.35s ease; pointer-events: none; opacity: 0;
   background: rgba(14, 4, 34, 0.95); border: 1px solid rgba(61, 255, 138, 0.7); border-radius: 14px; padding: 10px 16px; font-size: 14px; box-shadow: 0 0 20px rgba(61, 255, 138, 0.3); max-width: 90vw; text-align: center; }
 #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#toast.compact { padding: 6px 12px; font-size: 12.5px; border-radius: 10px; background: rgba(14, 4, 34, 0.88); }
 #toast b { color: var(--lime); letter-spacing: 1px; }
 #tuning { position: fixed; z-index: 30; left: calc(var(--sal) + 8px); top: calc(var(--sat) + 8px); width: min(330px, calc(100vw - 16px)); max-height: calc(100vh - var(--sat) - var(--sab) - 16px); overflow-y: auto; display: none; touch-action: pan-y;
   background: rgba(6, 2, 16, 0.94); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; }

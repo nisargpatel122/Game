@@ -336,7 +336,7 @@
       g.strokeStyle = rgba(c, 0.55); g.lineWidth = 0.7; g.stroke();
     }
     g.restore();
-    if (lit) {
+    if (lit && !(ins.shape === 'pill' && ins.text)) {
       g.save();
       insertShape(g, ins, 0.55);
       g.globalAlpha = alpha * 0.8; g.fillStyle = 'rgba(255,255,255,0.65)'; g.fill();
@@ -354,7 +354,7 @@
     }
   }
 
-  // lit insert sprite with a baked halo, drawn with additive blending
+  // lit insert sprite with a baked halo
   function buildInsertSprite(ins, s) {
     const pad = 16 * ins.size + 8;
     const sz = 10 * ins.size;

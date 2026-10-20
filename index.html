@@ -48,7 +48,16 @@ canvas#game { position: fixed; left: 0; top: 0; display: block; outline: none; }
   background: radial-gradient(ellipse at 50% 40%, rgba(40, 8, 70, 0.55), rgba(3, 0, 10, 0.82));
 }
 .overlay.show { display: flex; }
-.overlay.clear { background: rgba(3, 0, 10, 0.35); }
+.overlay.clear { background: rgba(3, 0, 10, 0.25); }
+/* the title card lets the attract-mode light show glow through it */
+.overlay.title .panel { background: rgba(14, 4, 34, 0.66); }
+.overlay.title .btn { background: linear-gradient(180deg, rgba(60, 20, 110, 0.45), rgba(25, 6, 55, 0.4)); }
+@media (max-aspect-ratio: 1/1) {
+  .overlay.title { align-items: flex-end; padding-bottom: calc(var(--sab) + 18px); }
+  .overlay.title .logo { margin: 0 0 12px; }
+  .overlay.title .logo .a, .overlay.title .logo .b { font-size: clamp(34px, 10.5vw, 60px); }
+  .overlay.title .btn { padding: 11px 12px; margin: 6px 0; }
+}
 .panel {
   width: min(460px, 100%); max-height: 100%; overflow-y: auto; touch-action: pan-y; background: var(--panel);
   border: 1px solid var(--line); border-radius: 18px; padding: 20px 20px 16px; box-shadow: 0 0 40px rgba(255, 61, 240, 0.15), inset 0 0 30px rgba(54, 226, 255, 0.05);
@@ -100,6 +109,7 @@ table.scores tr.me td { color: var(--amber); }
 #toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%) translateY(-160%); top: calc(var(--sat) + 10px); transition: transform 0.35s ease, opacity 0.35s ease; pointer-events: none; opacity: 0;
   background: rgba(14, 4, 34, 0.95); border: 1px solid rgba(61, 255, 138, 0.7); border-radius: 14px; padding: 10px 16px; font-size: 14px; box-shadow: 0 0 20px rgba(61, 255, 138, 0.3); max-width: 90vw; text-align: center; }
 #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#toast.compact { padding: 6px 12px; font-size: 12.5px; border-radius: 10px; background: rgba(14, 4, 34, 0.88); }
 #toast b { color: var(--lime); letter-spacing: 1px; }
 #tuning { position: fixed; z-index: 30; left: calc(var(--sal) + 8px); top: calc(var(--sat) + 8px); width: min(330px, calc(100vw - 16px)); max-height: calc(100vh - var(--sat) - var(--sab) - 16px); overflow-y: auto; display: none; touch-action: pan-y;
   background: rgba(6, 2, 16, 0.94); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 13px; }
@@ -121,7 +131,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
 <div id="tuning"></div>
 <noscript>NEON NEBULA needs JavaScript turned on.</noscript>
 <script>
-/* NEON NEBULA v1.0.0-ffd9e542 - all code below is generated from src/ by tools/build.js */
+/* NEON NEBULA v1.0.0-d97336c2 - all code below is generated from src/ by tools/build.js */
 
 /* ---- src/core/settings.js ---- */
 /*
@@ -5197,7 +5207,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
       g.strokeStyle = rgba(c, 0.55); g.lineWidth = 0.7; g.stroke();
     }
     g.restore();
-    if (lit) {
+    if (lit && !(ins.shape === 'pill' && ins.text)) {
       g.save();
       insertShape(g, ins, 0.55);
       g.globalAlpha = alpha * 0.8; g.fillStyle = 'rgba(255,255,255,0.65)'; g.fill();
@@ -5215,7 +5225,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     }
   }
 
-  // lit insert sprite with a baked halo, drawn with additive blending
+  // lit insert sprite with a baked halo
   function buildInsertSprite(ins, s) {
     const pad = 16 * ins.size + 8;
     const sz = 10 * ins.size;
@@ -5964,7 +5974,8 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     const lamps = g.state === 'playing' || g.state === 'attract' ? g.rules.lamps() : {};
     const t = fx.t;
     const attract = g.state === 'attract' || g.state === 'idle' || g.state === 'gameover';
-    c.globalCompositeOperation = 'lighter';
+    // normal blending keeps the dark lettering on lit inserts readable
+    c.globalCompositeOperation = 'source-over';
     const list = g.inserts;
     for (let i = 0; i < list.length; i++) {
       const ins = list[i];
@@ -6309,17 +6320,26 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
       c.fillStyle = color; c.fillText(txt, Q.x * dpr, y * dpr); y += size * 1.5;
     };
     const f2 = Math.max(11, Math.min(15, Q.w / 26));
+    const dim = 'rgba(220,210,245,0.8)';
     r2('CONTROLS', '#36e2ff', f2, true);
-    r2('Flippers   Z / Shift / ←    / Shift / →', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Launch     hold Space or ↓, release', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Nudge      X   .   ↑', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Pause P / Esc    Mute M', 'rgba(220,210,245,0.8)', f2 * 0.85);
+    if (this.isTouch) {
+      r2('Flippers: tap the left / right half', dim, f2 * 0.85);
+      r2('Launch: drag the plunger down, let go', dim, f2 * 0.85);
+      r2('Nudge: quick swipe up', dim, f2 * 0.85);
+      r2('Pause: the ❚❚ button', dim, f2 * 0.85);
+    } else {
+      r2('Left flipper:  Z · L-Shift · ←', dim, f2 * 0.85);
+      r2('Right flipper:  / · R-Shift · →', dim, f2 * 0.85);
+      r2('Launch: hold Space or ↓, release', dim, f2 * 0.85);
+      r2('Nudge:  X  ·  .  ·  ↑', dim, f2 * 0.85);
+      r2('Pause P / Esc  ·  Mute M', dim, f2 * 0.85);
+    }
     y += f2;
     r2('SHOOT', '#ff3df0', f2, true);
-    r2('Blinking arrows = what to shoot next', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Black Hole starts missions', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Left ramp lights LOCK, right ramp locks', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Lock 2 balls for NEBULA MULTIBALL', 'rgba(220,210,245,0.8)', f2 * 0.85);
+    r2('Blinking arrows = what to shoot next', dim, f2 * 0.85);
+    r2('Black Hole starts missions', dim, f2 * 0.85);
+    r2('Left ramp lights LOCK, right ramp locks', dim, f2 * 0.85);
+    r2('Lock 2 balls for NEBULA MULTIBALL', dim, f2 * 0.85);
   };
 
   Renderer.prototype.drawTouchHints = function (c) {
@@ -6674,7 +6694,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     this.sel = 0;
     const html = this['scr_' + name](opts || {});
     this.ov.innerHTML = '<div class="panel" role="dialog">' + html + '</div>';
-    this.ov.className = 'overlay show' + (name === 'title' || name === 'gameover' ? ' clear' : '');
+    this.ov.className = 'overlay show' + (name === 'title' || name === 'gameover' ? ' clear' : '') + (name === 'title' ? ' title' : '');
     this.wire();
   };
 
@@ -6857,7 +6877,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
           '<div class="ch">' + this.initials.chars[i] + '</div><button data-act="ini-down" data-i="' + i + '" aria-label="previous letter">▼</button></div>';
       }
       h += '</div><button class="btn primary" data-act="ini-ok">OK</button>';
-      h += '<div class="hint">Type your initials, or use ← → to change and Space to confirm</div>';
+      h += '<div class="hint">' + (this.app.isTouch() ? 'Tap ▲ ▼ to pick each letter, then OK' : 'Type your initials, or use ← → to change and Space to confirm') + '</div>';
     } else {
       if (o.rank != null) h += '<div class="hint" style="color:#ffb238;font-size:14px">HIGH SCORE #' + (o.rank + 1) + '</div>';
       const g = o.stats || {};
@@ -6915,18 +6935,47 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
   };
 
   // --------------------------------------------------------------- toast ---
-  UI.prototype.toast = function (html) {
-    this.toastQ.push(html);
+  // deferred toasts (achievements) wait for a quiet moment when the only place
+  // to show them would be over the playfield
+  UI.prototype.toast = function (html, defer, sound) {
+    this.toastQ.push({ html: html, defer: !!defer, sound: sound });
     if (!this.toastBusy) this.nextToast();
   };
   UI.prototype.nextToast = function () {
     const el = $('toast');
-    const h = this.toastQ.shift();
-    if (!h) { this.toastBusy = false; return; }
+    const q = this.toastQ[0];
+    if (!q) { this.toastBusy = false; return; }
     this.toastBusy = true;
+    const g = this.app.game, L = this.app.renderer && this.app.renderer.L;
+    if (q.defer && L && !L.panelL && g.state === 'playing' && !g.paused) {
+      setTimeout(() => this.nextToast(), 500);
+      return;
+    }
+    this.toastQ.shift();
+    const h = q.html;
+    if (q.sound) NN.Audio.play(q.sound);
     el.innerHTML = h;
+    this.placeToast(el);
     el.classList.add('show');
     setTimeout(() => { el.classList.remove('show'); setTimeout(() => this.nextToast(), 400); }, 2600);
+  };
+
+  // keep toasts off the score display and the playfield where we can: in the
+  // left side panel on wide screens, else just under the dot-matrix display
+  UI.prototype.placeToast = function (el) {
+    const R = this.app.renderer, L = R && R.L;
+    if (!L) return;
+    if (L.panelL) {
+      el.style.left = (L.panelL.x + L.panelL.w / 2) + 'px';
+      el.style.top = (L.panelL.y + Math.max(0, Math.min(L.panelL.h - 110, 330))) + 'px';
+      el.style.maxWidth = Math.max(200, L.panelL.w) + 'px';
+      el.className = '';
+    } else {
+      el.style.left = '50%';
+      el.style.top = (L.dmd.y + L.dmd.h + 8) + 'px';
+      el.style.maxWidth = '';
+      el.className = 'compact';
+    }
   };
 
   // -------------------------------------------------------------- tuning ---
@@ -7004,6 +7053,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     app.game.lastScore = NN.Store.get('lastScore', 0);
     app.fx = new NN.FX();
     app.renderer = new NN.Renderer(app.canvas, app.game, app.fx);
+    app.renderer.isTouch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
     app.practice = { active: false, drop: app.practiceDrop };
     app.ui = new NN.UI(app);
     app.input = new NN.Input(app);
@@ -7248,8 +7298,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     if (!fresh || !fresh.length) return;
     NN.saveAchievements(app.achievements);
     for (const a of fresh) {
-      app.ui.toast('<b>ACHIEVEMENT</b><br>' + a.name + ' · ' + a.desc);
-      NN.Audio.play('achievement');
+      app.ui.toast('<b>ACHIEVEMENT</b><br>' + a.name + ' · ' + a.desc, true, 'achievement');
     }
   };
 

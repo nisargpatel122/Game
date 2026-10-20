@@ -29,6 +29,7 @@
     app.game.lastScore = NN.Store.get('lastScore', 0);
     app.fx = new NN.FX();
     app.renderer = new NN.Renderer(app.canvas, app.game, app.fx);
+    app.renderer.isTouch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
     app.practice = { active: false, drop: app.practiceDrop };
     app.ui = new NN.UI(app);
     app.input = new NN.Input(app);
@@ -273,8 +274,7 @@
     if (!fresh || !fresh.length) return;
     NN.saveAchievements(app.achievements);
     for (const a of fresh) {
-      app.ui.toast('<b>ACHIEVEMENT</b><br>' + a.name + ' · ' + a.desc);
-      NN.Audio.play('achievement');
+      app.ui.toast('<b>ACHIEVEMENT</b><br>' + a.name + ' · ' + a.desc, true, 'achievement');
     }
   };
 

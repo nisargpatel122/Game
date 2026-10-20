@@ -269,7 +269,8 @@
     const lamps = g.state === 'playing' || g.state === 'attract' ? g.rules.lamps() : {};
     const t = fx.t;
     const attract = g.state === 'attract' || g.state === 'idle' || g.state === 'gameover';
-    c.globalCompositeOperation = 'lighter';
+    // normal blending keeps the dark lettering on lit inserts readable
+    c.globalCompositeOperation = 'source-over';
     const list = g.inserts;
     for (let i = 0; i < list.length; i++) {
       const ins = list[i];
@@ -614,17 +615,26 @@
       c.fillStyle = color; c.fillText(txt, Q.x * dpr, y * dpr); y += size * 1.5;
     };
     const f2 = Math.max(11, Math.min(15, Q.w / 26));
+    const dim = 'rgba(220,210,245,0.8)';
     r2('CONTROLS', '#36e2ff', f2, true);
-    r2('Flippers   Z / Shift / ←    / Shift / →', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Launch     hold Space or ↓, release', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Nudge      X   .   ↑', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Pause P / Esc    Mute M', 'rgba(220,210,245,0.8)', f2 * 0.85);
+    if (this.isTouch) {
+      r2('Flippers: tap the left / right half', dim, f2 * 0.85);
+      r2('Launch: drag the plunger down, let go', dim, f2 * 0.85);
+      r2('Nudge: quick swipe up', dim, f2 * 0.85);
+      r2('Pause: the ❚❚ button', dim, f2 * 0.85);
+    } else {
+      r2('Left flipper:  Z · L-Shift · ←', dim, f2 * 0.85);
+      r2('Right flipper:  / · R-Shift · →', dim, f2 * 0.85);
+      r2('Launch: hold Space or ↓, release', dim, f2 * 0.85);
+      r2('Nudge:  X  ·  .  ·  ↑', dim, f2 * 0.85);
+      r2('Pause P / Esc  ·  Mute M', dim, f2 * 0.85);
+    }
     y += f2;
     r2('SHOOT', '#ff3df0', f2, true);
-    r2('Blinking arrows = what to shoot next', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Black Hole starts missions', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Left ramp lights LOCK, right ramp locks', 'rgba(220,210,245,0.8)', f2 * 0.85);
-    r2('Lock 2 balls for NEBULA MULTIBALL', 'rgba(220,210,245,0.8)', f2 * 0.85);
+    r2('Blinking arrows = what to shoot next', dim, f2 * 0.85);
+    r2('Black Hole starts missions', dim, f2 * 0.85);
+    r2('Left ramp lights LOCK, right ramp locks', dim, f2 * 0.85);
+    r2('Lock 2 balls for NEBULA MULTIBALL', dim, f2 * 0.85);
   };
 
   Renderer.prototype.drawTouchHints = function (c) {
