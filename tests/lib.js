@@ -72,6 +72,8 @@ function freeSpot(w, rng, region) {
     const x = region[0] + rng() * (region[2] - region[0]);
     const y = region[1] + rng() * (region[3] - region[1]);
     if (!insideCabinet(w.table, x, y, r, -1)) continue;
+    // not inside or under the plunger tip
+    if (w.plunger && x > w.plunger.x0 - r && y > w.plunger.yRest + w.plunger.pull - r - 1) continue;
     let ok = true;
     for (const c of w.colliders) {
       if (!(c.mask & 1) || !c.active) continue;
