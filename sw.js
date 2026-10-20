@@ -1,6 +1,6 @@
 /* Angry Flock service worker: caches every game file so it runs offline.
  * Bump VERSION whenever any file changes so phones pick up the update. */
-const VERSION = 'angryflock-v6';
+const VERSION = 'angryflock-v7';
 const FILES = [
   './',
   './index.html',
@@ -25,7 +25,8 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      // other games share this web address, so only clear our own old caches
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('angryflock-') && k !== VERSION).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
