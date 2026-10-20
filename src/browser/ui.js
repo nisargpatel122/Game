@@ -51,6 +51,7 @@
     const html = this['scr_' + name](opts || {});
     this.ov.innerHTML = '<div class="panel" role="dialog">' + html + '</div>';
     this.ov.className = 'overlay show' + (name === 'title' || name === 'gameover' ? ' clear' : '') + (name === 'title' ? ' title' : '');
+    if (name === 'title') this.sel = Math.max(0, this.buttons().findIndex((b) => b.getAttribute('data-act') === 'play'));
     this.wire();
   };
 
@@ -58,13 +59,15 @@
 
   UI.prototype.wire = function () {
     const btns = this.buttons();
-    btns.forEach((b, i) => {
-      b.addEventListener('click', (e) => { e.preventDefault(); NN.Audio.unlock(); this.sel = i; this.activate(b); });
-    });
+    btns.forEach((b) => this.wireButton(b));
     this.ov.querySelectorAll('input[type=range]').forEach((r) => {
       r.addEventListener('input', () => this.onSlider(r));
     });
     this.highlight();
+  };
+
+  UI.prototype.wireButton = function (b) {
+    b.addEventListener('click', (e) => { e.preventDefault(); NN.Audio.unlock(); this.sel = Math.max(0, this.buttons().indexOf(b)); this.activate(b); });
   };
 
   UI.prototype.highlight = function () {
@@ -143,12 +146,12 @@
   UI.prototype.scr_title = function () {
     const d = this.app.settings.difficulty;
     return '<div class="logo"><span class="a">NEON</span><span class="b">NEBULA</span><span class="sub">P I N B A L L</span></div>' +
+      this.installButton() +
       '<button class="btn primary" data-act="play">PLAY</button>' +
       '<div class="row"><button class="btn" data-act="diff">' + (d === 'arcade' ? 'ARCADE · 3 BALLS' : 'CASUAL · 5 BALLS') + '</button></div>' +
       '<div class="row"><button class="btn" data-act="howto">HOW TO PLAY</button><button class="btn" data-act="scores">HIGH SCORES</button></div>' +
       '<div class="row"><button class="btn" data-act="stats">STATS</button><button class="btn" data-act="settings">SETTINGS</button></div>' +
-      this.installButton() +
-      '<div class="hint">' + (this.app.isTouch() ? 'Tap left / right side for flippers · drag the plunger down' : 'Z / Shift / ← and / / Shift / → flip · hold Space to launch') + '<br>No ads. Ever. Works offline.</div>';
+      '<div class="hint">' + (this.app.isTouch() ? 'Tap left / right side for flippers · drag the plunger down' : 'Flippers: Z or ← and / or → · hold Space to launch') + '<br>No ads. Ever. Works offline.</div>';
   };
 
   // shown only when the browser can install the game right now (or on iPhone,
@@ -160,8 +163,25 @@
     return '';
   };
 
+  // The install offer can arrive while someone is using the title screen, so the
+  // button is added or removed in place, under the logo: on phones the card is
+  // anchored to the bottom, so the buttons below it do not move under a finger.
   UI.prototype.refreshTitle = function () {
-    if (this.screen === 'title') this.render('title');
+    if (this.screen !== 'title') return;
+    const panel = this.ov.querySelector('.panel');
+    const logo = panel && panel.querySelector('.logo');
+    if (!logo) return;
+    const old = panel.querySelector('.btn.install');
+    const html = this.installButton();
+    if ((old ? old.outerHTML : '') === html) return;
+    const cur = this.buttons()[this.sel];
+    if (old) old.remove();
+    if (html) {
+      logo.insertAdjacentHTML('afterend', html);
+      this.wireButton(logo.nextElementSibling);
+    }
+    this.sel = Math.max(0, this.buttons().indexOf(cur));
+    this.highlight();
   };
 
   UI.prototype.scr_iosinstall = function () {

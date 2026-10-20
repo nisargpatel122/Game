@@ -15,6 +15,9 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.png': 'image/p
 function serve() {
   return new Promise((resolve) => {
     const srv = http.createServer((req, res) => {
+      // "offline": the server stops answering. (Playwright's setOffline alone does
+      // not stop a service worker's own fetches, so it cannot prove offline play.)
+      if (srv.offline) { req.socket.destroy(); return; }
       let p = decodeURIComponent(req.url.split('?')[0]);
       // a page standing in for another game on the same site (like Angry Flock)
       if (p.startsWith('/other/')) { res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<!doctype html><title>other</title>'); return; }
@@ -87,22 +90,65 @@ function serve() {
   check(id === url, "app id is this game's own address (" + id + '), not the whole site');
 
   // the in-game Install button, driven by a stand-in install prompt
-  const btn = await page.evaluate(async () => {
-    const before = !!document.querySelector('[data-act=install]');
+  const offer = () => page.evaluate(() => {
     const e = new Event('beforeinstallprompt', { cancelable: true });
-    let prompted = false;
-    e.prompt = () => { prompted = true; return Promise.resolve(); };
+    window.__prompted = 0;
+    e.prompt = () => { window.__prompted++; return Promise.resolve({ outcome: 'accepted' }); };
     e.userChoice = Promise.resolve({ outcome: 'accepted' });
     window.dispatchEvent(e);
-    const shown = !!document.querySelector('[data-act=install]');
-    document.querySelector('[data-act=install]').click();
-    await new Promise((r) => setTimeout(r, 50));
-    return { before, shown, defaultPrevented: e.defaultPrevented, prompted, after: !!document.querySelector('[data-act=install]') };
+    return e.defaultPrevented;
   });
-  check(!btn.before && btn.shown, 'Install button appears only once the browser offers installing');
-  check(btn.defaultPrevented && btn.prompted && !btn.after, 'tapping it opens the install prompt and the button goes away');
+  const titleState = () => page.evaluate(() => {
+    const b = document.querySelector('[data-act=install]');
+    const btns = Array.from(document.querySelectorAll('#ov [data-act]'));
+    return {
+      button: !!b, underLogo: !!b && b.previousElementSibling && b.previousElementSibling.classList.contains('logo'),
+      selected: (btns[NN.app.ui.sel] || {}).getAttribute && btns[NN.app.ui.sel].getAttribute('data-act'),
+      playTop: document.querySelector('[data-act=play]').getBoundingClientRect().top, prompted: window.__prompted, kept: !!NN.app.installEvent,
+    };
+  });
+  const before = await titleState();
+  check(!before.button, 'no Install button before the browser offers installing');
+  check(await offer(), "the browser's own install banner is replaced by the game's button");
+  const shown = await titleState();
+  check(shown.button && shown.underLogo, 'Install button appears under the logo');
+  check(shown.selected === 'play' && Math.abs(shown.playTop - before.playTop) < 1, 'PLAY keeps its place and stays selected when the button appears');
+  // a gamepad press is not a user gesture: the offer must survive it. (Playwright
+  // runs page scripts as if tapped, so "no gesture" is simulated here.)
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'userActivation', { value: { isActive: false }, configurable: true });
+    NN.app.promptInstall();
+    delete navigator.userActivation;
+  });
+  const pad = await titleState();
+  check(pad.button && pad.kept && pad.prompted === 0, 'a press without a tap or click keeps the offer and the button');
+  // a browser that refuses prompt() outright: the offer is kept as well
+  await page.evaluate(async () => {
+    const ev = NN.app.installEvent, real = ev.prompt;
+    ev.prompt = () => Promise.reject(new DOMException('no gesture', 'NotAllowedError'));
+    NN.app.promptInstall();
+    await new Promise((r) => setTimeout(r, 50));
+    ev.prompt = real;
+  });
+  const refused = await titleState();
+  check(refused.button && refused.kept, 'a refused prompt keeps the offer and the button');
+  await page.click('[data-act=install]');
+  await page.waitForTimeout(100);
+  const tapped = await titleState();
+  check(tapped.prompted === 1 && !tapped.button, 'tapping it opens the install prompt and the button goes away');
+  // after a game in full screen (phones), the button must still show on the title
+  await offer();
+  await page.click('[data-act=play]');
+  await page.waitForTimeout(600);
+  const fs1 = await page.evaluate(() => ({ fs: !!document.fullscreenElement, state: NN.app.game.state }));
+  await page.evaluate(() => NN.app.toTitle());
+  await page.waitForTimeout(300);
+  const afterGame = await titleState();
+  check(afterGame.button, 'Install button is back on the title after a game' + (fs1.fs ? ' played full screen' : ' (full screen was not entered here)'));
 
   // offline reload, both the folder and index.html
+  if (await page.evaluate(() => !!document.fullscreenElement)) await page.evaluate(() => document.exitFullscreen());
+  srv.offline = true;
   await ctx.setOffline(true);
   for (const u of [url, url + 'index.html']) {
     await page.goto(u);

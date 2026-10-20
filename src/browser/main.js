@@ -343,9 +343,11 @@
 
   // Installable app extras only when served over http(s); the double-clicked
   // file:// version makes no requests at all.
+  // running as an installed app; full screen that the game asked for itself in a
+  // browser tab (see goFullscreen) also matches display-mode, so it is excluded
   app.isStandalone = function () {
-    return navigator.standalone === true ||
-      !!(window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+    return navigator.standalone === true || (!document.fullscreenElement &&
+      !!(window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches));
   };
 
   // 'prompt' when the browser handed us an install prompt, 'ios' on iPhone/iPad
@@ -363,13 +365,14 @@
   app.promptInstall = function () {
     const ev = app.installEvent;
     if (!ev) return;
+    // browsers only open the prompt from a tap, click or key press (a gamepad
+    // button does not count): keep the offer for next time instead of losing it
+    const refused = () => { app.installEvent = ev; app.ui.toast('Tap, click or press Enter on <b>INSTALL APP</b> to install'); };
+    if (navigator.userActivation && !navigator.userActivation.isActive) { refused(); return; }
     app.installEvent = null;
-    try {
-      ev.prompt();
-      Promise.resolve(ev.userChoice).catch(() => {}).then(() => app.ui.refreshTitle());
-    } catch (err) {
-      app.ui.refreshTitle();
-    }
+    let p;
+    try { p = ev.prompt(); } catch (err) { refused(); return; }
+    Promise.resolve(p).then(() => app.ui.refreshTitle(), refused);
   };
 
   app.installPWA = function () {
@@ -379,6 +382,7 @@
       app.installEvent = e;
       app.ui.refreshTitle();
     });
+    document.addEventListener('fullscreenchange', () => app.ui.refreshTitle());
     window.addEventListener('appinstalled', () => {
       app.installEvent = null;
       app.ui.refreshTitle();
