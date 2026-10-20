@@ -5,8 +5,8 @@ const DT = 1 / 480;
 function stepFor(w, s, each) { const n = Math.round(s / DT); for (let i = 0; i < n; i++) { if (each && each(i * DT) === false) return; w.tick(DT); } }
 
 const SHOT_EVENTS = {
-  leftOrbit: (e) => e.type === 'sensor' && e.id === 'loTop' && e.dir === 1,
-  rightOrbit: (e) => e.type === 'sensor' && e.id === 'roTop' && e.dir === 1,
+  leftOrbit: (e) => e.type === 'sensor' && e.id === 'orbitTop' && e.dir === 1 && e.ball.flags.upL,
+  rightOrbit: (e) => e.type === 'sensor' && e.id === 'orbitTop' && e.dir === -1 && e.ball.flags.upR,
   leftRamp: (e) => e.type === 'sensor' && e.id === 'rampLMade',
   rightRamp: (e) => e.type === 'sensor' && e.id === 'rampRMade',
   scoop: (e) => e.type === 'capture' && e.id === 'scoop',

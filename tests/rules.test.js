@@ -140,7 +140,7 @@ test('every mission can be completed', () => {
       if (id === 'comet') R.shot('leftRamp', {});
       else if (id === 'pulsar') g.handleEvent({ type: 'spin', id: 'spinner' });
       else if (id === 'meteor') g.handleEvent({ type: 'bumper', id: 'bumperA', ball: b, x: 0, y: 0 });
-      else if (id === 'rogue') R.shot(NN.MAJOR_SHOTS[R.mission.st.at], {});
+      else if (id === 'rogue') R.shot(NN.MAJOR_SHOTS.filter((x) => x !== 'comet')[R.mission.st.at], {});
       else if (id === 'constellation') R.shot(R.mission.st.seq[R.mission.st.i], {});
       else if (id === 'horizon') {
         if (R.mission.st.phase === 1) for (let i = 1; i <= 3; i++) g.handleEvent({ type: 'drop', id: 'drop' + i, ball: b, x: 0, y: 0 });
@@ -190,7 +190,7 @@ test('combos chain within the window and grow the multiplier', () => {
   R.shot('leftRamp', {}); run_(g, 1);
   R.shot('rightRamp', {}); run_(g, 1);
   R.shot('leftOrbit', {});
-  assert(R.comboCount === 3 && R.comboMult === 2, 'three-way combo x2, got ' + R.comboCount + ' x' + R.comboMult);
+  assert(R.comboCount === 3 && R.comboMult === 1.5, 'three-way combo x1.5, got ' + R.comboCount + ' x' + R.comboMult);
   run_(g, 5);
   R.shot('leftRamp', {});
   assert(R.comboCount === 1, 'combo resets after the window');

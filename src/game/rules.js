@@ -11,8 +11,8 @@
   const MAJOR = NN.MAJOR_SHOTS;
 
   NN.RULES_CONFIG = {
-    arcade: { balls: 3, ballSave: 8, replay: 120000000, tiltWarnings: 2, missionBonusTime: 0, mbSave: 12, label: 'ARCADE' },
-    casual: { balls: 5, ballSave: 15, replay: 70000000, tiltWarnings: 3, missionBonusTime: 10, mbSave: 18, label: 'CASUAL' },
+    arcade: { balls: 3, ballSave: 8, replay: 250000000, tiltWarnings: 2, missionBonusTime: 0, mbSave: 12, label: 'ARCADE' },
+    casual: { balls: 5, ballSave: 15, replay: 150000000, tiltWarnings: 3, missionBonusTime: 10, mbSave: 18, label: 'CASUAL' },
   };
 
   const SC = {
@@ -21,7 +21,7 @@
     drop: 100000, dropsComplete: 2000000,
     ramp: 750000, rampStep: 100000, orbit: 600000, scoop: 500000, comet: 1000000, cometStep: 250000,
     skill: 2500000, skillStep: 1000000, superSkill: 7500000,
-    combo: 500000, jackpot: 5000000, jackpotStep: 1000000, superJackpot: 25000000, superStep: 10000000,
+    combo: 300000, jackpot: 5000000, jackpotStep: 1000000, superJackpot: 25000000, superStep: 10000000,
     missionComplete: 10000000, missionStep: 5000000,
     supernovaShot: 5000000, supernovaFinal: 50000000,
     lock: 1000000, mbStart: 2000000, extraBallValue: 5000000, kickback: 250000,
@@ -431,11 +431,11 @@
     if (now - this.lastMajor <= COMBO_WINDOW) this.comboCount++;
     else this.comboCount = 1;
     this.lastMajor = now;
-    this.comboMult = Math.min(5, 1 + 0.5 * (this.comboCount - 1));
+    this.comboMult = Math.min(3, 1 + 0.25 * (this.comboCount - 1));
     if (this.comboCount >= 2) {
       this.bstats.combos++;
       if (this.comboCount > this.gstats.maxCombo) this.gstats.maxCombo = this.comboCount;
-      const cv = this.award(SC.combo * this.comboCount);
+      const cv = this.award(SC.combo * Math.min(8, this.comboCount));
       this.show({ kind: 'combo', t1: this.comboCount + '-WAY COMBO', t2: U.formatScore(cv) + '  X' + this.comboMult, dur: 1.4, prio: 3, n: this.comboCount, replace: true });
       this.fx({ type: 'sound', id: 'combo', n: this.comboCount });
     }
@@ -583,7 +583,18 @@
   Rules.prototype.beginMissionSelect = function () {
     const avail = this.availableMissions();
     if (!avail.length) return;
-    this.selecting = { list: avail, i: 0, until: this.now() + 6 };
+    // start on the mission after the last one tried, so the lineup rotates
+    let i = 0;
+    if (this.lastMissionId) {
+      const all = this.missions.map((m) => m.def.id);
+      const from = all.indexOf(this.lastMissionId);
+      for (let k = 1; k <= all.length; k++) {
+        const id = all[(from + k) % all.length];
+        const j = avail.findIndex((m) => m.def.id === id);
+        if (j >= 0) { i = j; break; }
+      }
+    }
+    this.selecting = { list: avail, i: i, until: this.now() + 6 };
     this.fx({ type: 'sound', id: 'scoop' });
     this.fx({ type: 'music', state: 'select' });
     this.showSelect();
@@ -616,6 +627,7 @@
 
   Rules.prototype.startMission = function (m) {
     this.missionLit = false;
+    this.lastMissionId = m.def.id;
     const st = {};
     m.def.start(st, this);
     this.mission = { def: m.def, entry: m, st: st, timeLeft: m.def.time + this.cfg.missionBonusTime, started: this.now() };

@@ -47,9 +47,12 @@
     add(S.polyline(OW, { mat: 'metal', r: 2 }));
     T.draw.walls.push({ pts: OW, r: 2, color: 'magenta', neon: true, outer: true });
     const oEnd = OW[OW.length - 1];
-    wall([oEnd, [13, 692], [12, 700]], { r: 2, color: 'magenta' });
-    T.solids.push(OW.slice(1).concat([[13, 692], [12, 700]]));
-    L.leftWallBelowMouth = [oEnd, [13, 692]];
+    // below the funnel the wall angles toward the centre, so balls falling down
+    // the side are steered to the inlane, not dumped into the outlane
+    const LT = TW.ltip || [70, 700];
+    wall([oEnd, LT, [12, 762]], { r: 2, color: 'magenta' });
+    T.solids.push(OW.slice(1).concat([LT, [12, 762]]));
+    L.leftWallBelowMouth = [oEnd, LT];
     wall(IW, { r: 3, mat: 'metal', color: 'cyan' });
     add(S.arc(AC[0], AC[1], 204, 180 * D, 34 * D, { mat: 'metal', r: 3 }));
     T.draw.walls.push({ arc: [AC[0], AC[1], 204, 180 * D, 34 * D], r: 3, color: 'cyan', neon: true });
@@ -61,9 +64,10 @@
     add(S.polyline(ROW, { mat: 'metal', r: 2 }));
     T.draw.walls.push({ pts: ROW, r: 2, color: 'magenta', neon: true });
     const roEnd = ROW[ROW.length - 1];
-    wall([roEnd, [461, 692], [462, 700]], { r: 2, color: 'magenta' });
-    T.solids.push([[462, ROW[0][1]]].concat(ROW.slice(1), [[461, 692], [462, 700]]));
-    L.rightWallBelowMouth = [roEnd, [461, 692]];
+    const RT = [474 - LT[0], LT[1]];
+    wall([roEnd, RT, [462, 762]], { r: 2, color: 'magenta' });
+    T.solids.push([[462, ROW[0][1]]].concat(ROW.slice(1), [RT, [462, 762]]));
+    L.rightWallBelowMouth = [roEnd, RT];
     const RIW = TW.rinner || [[425, 255], [425, 395], [404, 455]];
     wall(RIW, { r: 3, mat: 'metal', color: 'cyan' });
     add(S.arc(AC[0], AC[1], 170, 324 * D, 36 * D, { mat: 'metal', r: 3 }));
@@ -73,17 +77,22 @@
     L.rightOrbitInner = RIW;
 
     // Spinner in the left orbit
-    T.spinners.push({ id: 'spinner', x0: 13, x1: 49, y: 278, gain: 0.02, slow: 0.05, friction: 1.6, drag: 3 });
+    T.spinners.push({ id: 'spinner', x0: 13, x1: 49, y: 278, gain: 0.03, slow: 0.05, friction: 1.6, drag: 3 });
     lineSensor('spinner', 12, 278, 49, 278, 0, -1, { actions: [{ do: 'spinner', spinner: 'spinner' }] });
 
     // Orbit switches. Crossing the top switch going up = orbit shot. Coming back
     // down from the top flags the ball so the lower switch hands it to the wire
     // return that feeds the inlane.
     lineSensor('loTop', 12, 296, 49, 296, 0, -1, { actions: [
-      { dir: -1, do: 'flag', flag: 'descL', value: true }, { dir: 1, do: 'flag', flag: 'descL', value: false }] });
+      { dir: -1, do: 'flag', flag: 'descL', value: true }, { dir: -1, do: 'flag', flag: 'upL', value: false },
+      { dir: 1, do: 'flag', flag: 'descL', value: false }, { dir: 1, do: 'flag', flag: 'upL', value: true }] });
     lineSensor('loReturn', 12, 385, 74, 385, 0, 1, { actions: [{ dir: 1, do: 'wire', wire: 'wireLO', requireFlag: 'descL' }] });
     lineSensor('roTop', 424, 342, 463, 342, 0, -1, { actions: [
-      { dir: -1, do: 'flag', flag: 'descR', value: true }, { dir: 1, do: 'flag', flag: 'descR', value: false }] });
+      { dir: -1, do: 'flag', flag: 'descR', value: true }, { dir: -1, do: 'flag', flag: 'upR', value: false },
+      { dir: 1, do: 'flag', flag: 'descR', value: false }, { dir: 1, do: 'flag', flag: 'upR', value: true }] });
+    // An orbit only counts once the ball goes over the top of the loop: this
+    // switch at the top centre checks which lane the ball came up.
+    lineSensor('orbitTop', 255, 10, 255, 52, 1, 0);
     lineSensor('roReturn', 412, 385, 463, 385, 0, 1, { actions: [{ dir: 1, do: 'wire', wire: 'wireRO', requireFlag: 'descR' }] });
     L.shots.leftOrbit = { sensor: 'loTop', dir: 1, x: 31, y: 600, ang: -60 };
     L.shots.rightOrbit = { sensor: 'roTop', dir: 1, x: 444, y: 610, ang: -120 };

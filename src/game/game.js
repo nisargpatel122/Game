@@ -360,11 +360,11 @@
         if (e.dir === 1) { R.sw('outlane', id, e); this.fx({ type: 'sound', id: 'rollover', x: b.x }); }
         break;
       case 'loTop':
-        if (e.dir === 1) R.shot('leftOrbit', { x: b.x, y: b.y + 40 });
-        else R.sw('plungePath', id, e);
+        if (e.dir === -1) R.sw('plungePath', id, e);
         break;
-      case 'roTop':
-        if (e.dir === 1) R.shot('rightOrbit', { x: b.x, y: b.y + 40 });
+      case 'orbitTop':
+        if (e.dir === 1 && b.flags.upL) { b.flags.upL = false; R.shot('leftOrbit', { x: b.x, y: b.y + 50 }); }
+        else if (e.dir === -1 && b.flags.upR) { b.flags.upR = false; R.shot('rightOrbit', { x: b.x, y: b.y + 50 }); }
         break;
       case 'comet':
         if (e.dir === 1) R.shot('comet', { x: b.x, y: b.y + 30 });
@@ -405,6 +405,12 @@
 
   // ------------------------------------------------------------- scoop ---
   Game.prototype.onScoop = function (b) {
+    if (this.scoopBall && this.scoopBall !== b) {
+      // the scoop is already holding a ball: kick the newcomer straight back out
+      this.ejectBall(b, 0.85);
+      this.fx({ type: 'sound', id: 'scoopOut' });
+      return;
+    }
     this.scoopBall = b;
     this.fx({ type: 'sound', id: 'scoopIn' });
     this.fx({ type: 'flash', id: 'scoop', x: b.x, y: b.y });
@@ -416,19 +422,23 @@
     const b = this.scoopBall;
     if (!b) return;
     this.scoopBall = null;
+    this.ejectBall(b, 1);
+    this.fx({ type: 'sound', id: 'scoopOut' });
+    this.fx({ type: 'shake', amt: 1.5 });
+  };
+
+  Game.prototype.ejectBall = function (b, power) {
     const L = this.T.landmarks.scoop;
     b.state = 'play';
     b.holder = null;
     b.x = L.ejectX; b.y = L.ejectY;
     // toward the left flipper, with a little variation
     const a = (102 + (this.rng() - 0.5) * 6) * Math.PI / 180;
-    const sp = this.P.scoopEjectSpeed * (0.95 + this.rng() * 0.1);
+    const sp = this.P.scoopEjectSpeed * (0.95 + this.rng() * 0.1) * (power || 1);
     b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
     b.flipSide = {};
     b.inside = { scoop: true };
     b.lastActive = this.world.time;
-    this.fx({ type: 'sound', id: 'scoopOut' });
-    this.fx({ type: 'shake', amt: 1.5 });
   };
 
   // -------------------------------------------------------------- locks ---
@@ -582,6 +592,11 @@
   // machine pulsing its coils. Repeated failures re-serve the ball.
   Game.prototype.ballSearch = function (dt) {
     for (const b of this.world.balls) {
+      // self-heal: a ball parked in the scoop that the game is not tracking
+      if (b.state === 'held' && b.holder === 'scoop' && b !== this.scoopBall) {
+        if (!this.scoopBall) { this.scoopBall = b; this.schedule(1, () => this.ejectScoop()); } else this.ejectBall(b, 0.85);
+        continue;
+      }
       if (b.state !== 'play') { b.stillT = 0; continue; }
       const sp = Math.hypot(b.vx, b.vy);
       if (sp > 25) { b.stillT = 0; continue; }

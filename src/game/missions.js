@@ -12,6 +12,7 @@
 
   const MAJOR = ['leftOrbit', 'leftRamp', 'scoop', 'rightRamp', 'rightOrbit', 'comet'];
   NN.MAJOR_SHOTS = MAJOR;
+  const MAIN = MAJOR.filter((s) => s !== 'comet');   // shots the main flippers make
   const SHOT_NAMES = {
     leftOrbit: 'LEFT ORBIT', leftRamp: 'LEFT RAMP', scoop: 'BLACK HOLE',
     rightRamp: 'RIGHT RAMP', rightOrbit: 'RIGHT ORBIT', comet: 'COMET LANE',
@@ -20,8 +21,8 @@
 
   NN.MISSIONS = [
     {
-      id: 'comet', name: 'COMET CHASE', line1: 'SHOOT THE', line2: 'RAMPS', color: '#36c8ff', time: 40,
-      start(m) { m.count = 0; m.goal = 6; },
+      id: 'comet', name: 'COMET CHASE', line1: 'SHOOT THE', line2: 'RAMPS', color: '#36c8ff', time: 45,
+      start(m) { m.count = 0; m.goal = 5; },
       event(m, R, kind, id) {
         if (kind === 'shot' && (id === 'leftRamp' || id === 'rightRamp')) {
           m.count++;
@@ -35,8 +36,8 @@
       done(m) { return m.count >= m.goal; },
     },
     {
-      id: 'pulsar', name: 'PULSAR SPIN', line1: 'SPIN THE', line2: 'SPINNER', color: '#b48cff', time: 40,
-      start(m) { m.count = 0; m.goal = 50; },
+      id: 'pulsar', name: 'PULSAR SPIN', line1: 'SPIN THE', line2: 'SPINNER', color: '#b48cff', time: 45,
+      start(m) { m.count = 0; m.goal = 40; },
       event(m, R, kind, id) {
         if (kind === 'spin') { m.count++; return 150000; }
         if (kind === 'shot' && (id === 'leftOrbit' || id === 'rightOrbit')) return 500000;
@@ -48,44 +49,48 @@
       done(m) { return m.count >= m.goal; },
     },
     {
-      id: 'meteor', name: 'METEOR STORM', line1: 'SMASH THE', line2: 'BUMPERS', color: '#ff7a2f', time: 35,
-      start(m) { m.count = 0; m.goal = 30; },
-      event(m, R, kind) {
+      id: 'meteor', name: 'METEOR STORM', line1: 'SMASH THE', line2: 'BUMPERS', color: '#ff7a2f', time: 45,
+      start(m) { m.count = 0; m.goal = 20; },
+      event(m, R, kind, id) {
         if (kind === 'bumper') { m.count++; return 400000; }
+        // orbits rain meteors over the bumpers; the Comet Lane throws the ball in
+        if (kind === 'shot' && (id === 'leftOrbit' || id === 'rightOrbit')) { m.count += 3; return 1000000; }
+        if (kind === 'shot' && id === 'comet') { m.count += 4; return 1500000; }
         return 0;
       },
-      lit() { return { comet: true }; },
+      lit() { return { comet: true, leftOrbit: true, rightOrbit: true }; },
       progress(m) { return m.count / m.goal; },
       status(m) { return 'METEORS ' + Math.min(m.count, m.goal) + '/' + m.goal; },
       done(m) { return m.count >= m.goal; },
     },
     {
-      id: 'rogue', name: 'ROGUE PLANET', line1: 'CATCH THE', line2: 'MOVING SHOT', color: '#3dff8a', time: 45,
-      start(m, R) { m.count = 0; m.goal = 3; m.at = R.rng.int(MAJOR.length); m.moveT = 0; },
+      id: 'rogue', name: 'ROGUE PLANET', line1: 'CATCH THE', line2: 'MOVING SHOT', color: '#3dff8a', time: 50,
+      // the planet wanders over the five main-flipper shots
+      start(m, R) { m.count = 0; m.goal = 3; m.at = R.rng.int(MAIN.length); m.moveT = 0; },
       tick(m, R, dt) {
         m.moveT += dt;
-        if (m.moveT >= 3.2) { m.moveT = 0; m.at = (m.at + 1 + R.rng.int(MAJOR.length - 1)) % MAJOR.length; R.fx({ type: 'sound', id: 'blip' }); }
+        if (m.moveT >= 4.2) { m.moveT = 0; m.at = (m.at + 1 + R.rng.int(MAIN.length - 1)) % MAIN.length; R.fx({ type: 'sound', id: 'blip' }); }
       },
       event(m, R, kind, id) {
-        if (kind === 'shot' && id === MAJOR[m.at]) {
+        if (kind === 'shot' && id === MAIN[m.at]) {
           m.count++;
           m.moveT = 0;
-          m.at = (m.at + 1 + R.rng.int(MAJOR.length - 1)) % MAJOR.length;
+          m.at = (m.at + 1 + R.rng.int(MAIN.length - 1)) % MAIN.length;
           return 5000000 + 2500000 * (m.count - 1);
         }
         return 0;
       },
-      lit(m) { const o = {}; o[MAJOR[m.at]] = true; return o; },
+      lit(m) { const o = {}; o[MAIN[m.at]] = true; return o; },
       progress(m) { return m.count / m.goal; },
       status(m) { return 'PLANET ' + m.count + '/' + m.goal; },
       done(m) { return m.count >= m.goal; },
     },
     {
-      id: 'constellation', name: 'CONSTELLATION', line1: 'HIT THE STARS', line2: 'IN ORDER', color: '#ffe14d', time: 50,
+      id: 'constellation', name: 'CONSTELLATION', line1: 'HIT THE STARS', line2: 'IN ORDER', color: '#ffe14d', time: 60,
       start(m, R) {
-        const pool = MAJOR.slice();
+        const pool = MAIN.slice();
         m.seq = [];
-        while (m.seq.length < 5) m.seq.push(pool.splice(R.rng.int(pool.length), 1)[0]);
+        while (m.seq.length < 4) m.seq.push(pool.splice(R.rng.int(pool.length), 1)[0]);
         m.i = 0;
       },
       event(m, R, kind, id) {
@@ -101,7 +106,7 @@
       done(m) { return m.i >= m.seq.length; },
     },
     {
-      id: 'horizon', name: 'EVENT HORIZON', line1: 'CLEAR ASTEROIDS', line2: 'THEN BLACK HOLE', color: '#ff3df0', time: 45,
+      id: 'horizon', name: 'EVENT HORIZON', line1: 'CLEAR ASTEROIDS', line2: 'THEN BLACK HOLE', color: '#ff3df0', time: 50,
       start(m, R) { m.phase = R.dropsDown() >= 3 ? 2 : 1; m.value = 25000000; R.resetDrops(); },
       tick(m, R, dt) {
         if (m.phase === 2) m.value = Math.max(5000000, m.value - 600000 * dt);

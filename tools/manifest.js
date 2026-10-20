@@ -13,6 +13,7 @@ module.exports = {
     'src/table/inserts.js',
     'src/game/rules.js',
     'src/game/game.js',
+    'src/game/bot-timing.js',
     'src/game/bot.js',
     'src/game/dmd.js',
     'src/game/achievements.js',

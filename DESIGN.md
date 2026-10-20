@@ -121,3 +121,32 @@ the Comet Lane are **major shots** that build combos.
 - Pre-rendered layers and glow sprites, no per-frame blur.
 - Every hit gets sound, light and floating points. Big moments get light shows,
   particles, small screen shake and a short slow-motion beat on the super jackpot.
+
+## Balance (tests/balance.js)
+
+Bots of different skill play hundreds of headless games. The skilled bots
+catch balls off the inlanes (live catch into the cradle) and aim at lit shots
+using a timing table learned from the cradle harness, with human-like timing
+error. Findings that shaped the table and rules:
+
+- Orbit-funnel walls originally steered falling balls into the outlanes
+  (61-83 % outlane drains). Angling them toward the inlanes brought outlane
+  drains to about 20-45 %: dangerous but fair.
+- Slingshot kicks scored free orbits and fed endless combos. Orbits now count
+  only when the ball goes over the top of the loop, slings kick a little softer
+  and combos grow more gently (max 3x).
+- A second ball entering an occupied Black Hole could be lost forever; an
+  occupied scoop now kicks the newcomer straight back out.
+- Mission goals were too hard (0-20 % completion). Goals and timers were
+  eased and mission select rotates through the lineup.
+
+Typical results (Arcade, 3 balls):
+
+| Bot | Game length | Median score | Missions / game |
+|---|---|---|---|
+| novice (reactive, misses often) | ~2 min | ~60-90M | 0.1 |
+| solid (catches half the feeds, aims) | ~9-10 min | ~700M | 2.3 |
+| good (catches most feeds, aims) | ~10 min | ~1B | 2.3-3 |
+
+Every novice game earns its first reward within 30 seconds (median 6-8 s) and
+starts a mission within about 25 s. Casual mode roughly doubles a novice's game.

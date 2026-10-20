@@ -12,6 +12,7 @@
     this.game = game;
     this.skill = opts.skill == null ? 0.7 : opts.skill;   // 0..1
     this.aim = opts.aim !== false && this.skill >= 0.5;
+    this.catchRate = opts.catchRate;
     this.rng = NN.U.rng(opts.seed || 99);
     this.hold = { L: 0, R: 0 };
     this.state = { L: 'idle', R: 'idle' };
@@ -68,10 +69,39 @@
       if (threat) break;
     }
     const st = this.state[side];
+    // skilled bots catch balls rolling down this side's inlane: hold the flipper
+    // up so the ball rolls into the cradle, then aim
+    if (st === 'idle' && this.aim && W.balls.filter((b) => b.state === 'play').length === 1) {
+      const lx = side === 'L' ? [52, 140] : [334, 422];
+      for (const b of W.balls) {
+        if (b.state === 'play' && b.layer === 0 && b.y > 770 && b.y < 905 && b.x > lx[0] && b.x < lx[1] && b.vy > 0 && Math.hypot(b.vx, b.vy) < 1700) {
+          if (this.rng() < (this.catchRate != null ? this.catchRate : this.skill * 0.9)) {
+            this.press(side, true);
+            this.state[side] = 'catch';
+            this.timer[side] = 1.4;
+            return;
+          }
+        }
+      }
+    }
+    if (st === 'catch') {
+      let resting = false;
+      for (const b of W.balls) if (b.state === 'play' && Math.hypot(b.x - f.px, b.y - f.py) < f.length && Math.hypot(b.vx, b.vy) < 40) resting = true;
+      if (resting) { this.state[side] = 'cradle'; this.timer[side] = 0.25 + this.rng() * 0.4; }
+      else if (this.timer[side] <= 0) { this.press(side, false); this.state[side] = 'cool'; this.timer[side] = 0.06; }
+      return;
+    }
     if (st === 'idle') {
       if (threat) {
-        // reaction: skilled bots react almost instantly, sloppy ones late or early
-        const jitter = (1 - this.skill) * 0.05;
+        // reaction: skilled bots react almost instantly; sloppy ones are late,
+        // early, or miss the ball entirely now and then
+        if (threat.b !== this.lastMissed && this.rng() < (1 - this.skill) * 0.3) {
+          this.lastMissed = threat.b;
+          this.state[side] = 'cool';
+          this.timer[side] = 0.35;
+          return;
+        }
+        const jitter = (1 - this.skill) * 0.12;
         this.timer[side] = Math.max(0, (this.rng() - 0.3) * jitter);
         this.state[side] = 'arming';
       }
@@ -137,7 +167,9 @@
       for (const s of pool) if (T[s]) for (const d of T[s]) opts.push(d);
       if (opts.length) {
         const d = opts[Math.floor(this.rng() * opts.length)];
-        return d + (this.rng() - 0.5) * (1 - this.skill) * 0.03;
+        // human-like timing error: a good player is within about 10 ms
+        const noise = (1 - this.skill) * 0.08 + 0.006;
+        return d + (this.rng() + this.rng() - 1) * noise;
       }
     }
     return 0.28 + this.rng() * 0.14;

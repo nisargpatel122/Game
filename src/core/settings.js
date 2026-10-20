@@ -49,7 +49,7 @@
     // ---- Active devices -----------------------------------------------------
     bumperKick: 2500,          // mm/s outgoing speed from a pop bumper
     bumperCooldown: 0.05,      // s
-    slingKick: 2300,           // mm/s outgoing speed from a slingshot
+    slingKick: 2000,           // mm/s outgoing speed from a slingshot
     slingThreshold: 350,       // mm/s impact needed to fire a slingshot
     slingCooldown: 0.12,
     kickbackSpeed: 3300,       // mm/s straight back up the left outlane
