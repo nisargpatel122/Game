@@ -451,7 +451,15 @@
   World.prototype.plungerLaunch = function (frac) {
     const pl = this.plunger;
     pl.pulling = false;
+    const was = pl.pull;
     pl.pull = this.P.plungerMaxPull * frac;
+    // a ball resting on the tip goes down with it, as it would during a real
+    // pull; otherwise the tip would only meet it at the very end of its stroke
+    // and the launch speed would depend on where that fell between two steps
+    const tipY = pl.yRest + was;
+    for (const b of this.balls) {
+      if (b.state === 'play' && b.x > pl.x0 - b.r && b.x < pl.x1 + b.r && Math.abs(tipY - b.r - b.y) < 2) b.y += pl.pull - was;
+    }
     this.plungerRelease();
   };
 

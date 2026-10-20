@@ -78,7 +78,9 @@
 
     // ------------------------------------------------------- lower field ---
     // Flippers
-    const FL = { x: 147, y: 935 };
+    // pivots sit far enough apart that the gap between the resting tips stays
+    // about 45 mm (1.7 balls) whatever the bat length
+    const FL = { x: 147 - (P.flipperLength - 70) * Math.cos(P.flipperRestDeg * D), y: 935 };
     const FR = { x: mx(FL.x), y: FL.y };
     const flipDef = (id, side, p) => ({
       id: id, side: side, x: p.x, y: p.y,

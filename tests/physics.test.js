@@ -136,10 +136,12 @@ test('ball settles in the right cradle and stays', () => { cradleTest('R'); });
 
 test('tip shots are strong, base shots are soft (true surface velocity)', () => {
   const speeds = [];
-  for (const along of [20, 35, 50, 62]) {
+  const len = makeWorld().w.flipperById.L.length;
+  const points = [0.29, 0.5, 0.71, 0.89].map((k) => Math.round(len * k));
+  for (const along of points) {
     let best = 0;
     // sweep the flip timing and keep the best result for each contact point
-    for (let trig = 4; trig <= 40; trig += 3) {
+    for (let trig = 4; trig <= 58; trig += 3) {
       const { w } = makeWorld();
       const f = w.flipperById.L;
       const sx = f.px + Math.cos(f.rest) * along;
@@ -152,8 +154,12 @@ test('tip shots are strong, base shots are soft (true surface velocity)', () => 
     }
     speeds.push(best);
   }
-  note('exit speed by contact point (20,35,50,62 mm from pivot): ' + speeds.map((s) => s.toFixed(0)).join(', ') + ' mm/s');
-  for (let i = 1; i < speeds.length; i++) assert(speeds[i] > speeds[i - 1], 'speed should grow toward the tip');
+  note('exit speed by contact point (' + points.join(', ') + ' mm from pivot): ' + speeds.map((s) => s.toFixed(0)).join(', ') + ' mm/s');
+  // soft at the base, rising along the bat, and as strong at the tip as anywhere
+  // (the bat's top speed caps it, so the outer half is a plateau)
+  for (let i = 1; i < 3; i++) assert(speeds[i] > speeds[i - 1], 'speed should grow from the base outward');
+  assert(speeds[3] > 0.95 * Math.max(...speeds), 'the tip should be on the plateau');
+  assert(speeds[3] > 1.3 * speeds[0], 'tip shots should be much stronger than base shots');
   assert(speeds[3] > 4000, 'tip shot should be strong');
 });
 

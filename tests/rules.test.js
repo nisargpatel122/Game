@@ -69,7 +69,12 @@ test('ball save returns a drained ball, then ball ends after it expires', () => 
   assert(R.gstats.ballSaves === 1, 'ball saved');
   run_(g, 2);
   assert(g.world.balls.length >= 1, 'replacement ball served');
+  // keep the replacement out of play (nobody is flipping) while the save runs out
+  for (const bb of g.world.balls) { bb.state = 'play'; bb.x = 240; bb.y = 600; bb.vx = bb.vy = 0; bb.frozen = true; }
+  const step = g.world.moveBall.bind(g.world);
+  g.world.moveBall = (bb, h) => { if (!bb.frozen) step(bb, h); };
   run_(g, 10);
+  g.world.moveBall = step;
   // drain everything now that the save is over
   for (const bb of g.world.balls) bb.state = 'gone';
   run_(g, 0.05);

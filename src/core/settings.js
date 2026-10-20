@@ -30,7 +30,7 @@
     maxSubsteps: 24,
 
     // ---- Flippers -----------------------------------------------------------
-    flipperLength: 70,         // mm pivot centre to tip centre (3 inch bat)
+    flipperLength: 78,         // mm pivot centre to tip centre (a touch over a 3 inch bat)
     flipperBaseRadius: 12.5,
     flipperTipRadius: 7,
     flipperRestDeg: 30,        // degrees below horizontal at rest
