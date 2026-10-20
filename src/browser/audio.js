@@ -14,7 +14,8 @@
 
   A.unlock = function () {
     if (A.ctx) {
-      if (A.ctx.state === 'suspended') A.ctx.resume().catch(() => {});
+      // 'suspended', or iOS's 'interrupted' after a call or app switch
+      if (A.ctx.state !== 'running' && A.ctx.state !== 'closed') A.ctx.resume().catch(() => {});
       return;
     }
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -31,6 +32,8 @@
     A.sfx = c.createGain(); A.sfx.connect(A.master);
     A.musicBus = c.createGain(); A.musicBus.connect(A.master);
     A.applyVolumes();
+    // a silent blip inside the first gesture fully unlocks older iPhones
+    try { const sb = c.createBufferSource(); sb.buffer = c.createBuffer(1, 1, 22050); sb.connect(c.destination); sb.start(0); } catch (e) { /* ignore */ }
     // noise buffers
     const len = c.sampleRate * 2;
     A.white = c.createBuffer(1, len, c.sampleRate);

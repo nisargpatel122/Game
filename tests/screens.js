@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
-const out = process.argv[2] || path.join(__dirname, '..', 'screenshots');
+const out = process.argv[2] || path.join(require('os').tmpdir(), 'neon-nebula-shots');
 fs.mkdirSync(out, { recursive: true });
 const url = 'file://' + path.join(__dirname, '..', 'index.html');
 const SIZES = {

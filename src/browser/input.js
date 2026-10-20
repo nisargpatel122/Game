@@ -38,6 +38,9 @@
     document.addEventListener('gesturestart', (e) => e.preventDefault());
     document.addEventListener('dblclick', (e) => e.preventDefault());
     window.addEventListener('blur', () => this.releaseAll());
+    // Safari only lets sound start inside certain gestures, so try on all of them
+    const unlock = () => NN.Audio.unlock();
+    for (const ev of ['touchend', 'click', 'pointerup']) document.addEventListener(ev, unlock, { passive: true, capture: true });
   };
 
   Input.prototype.releaseAll = function () {

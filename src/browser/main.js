@@ -183,7 +183,17 @@
     app.hintsShown = true;
     NN.Music.setState(app.settings.music > 0 ? 'normal' : 'off');
     app.requestWakeLock();
+    app.goFullscreen();
     app.canvas.focus();
+  };
+
+  // phones playing in a browser tab get the whole screen (installed apps and
+  // desktops are left alone; iPhones do not support this and skip it)
+  app.goFullscreen = function () {
+    const d = document, el = d.documentElement;
+    if (!app.isTouch() || !d.fullscreenEnabled || d.fullscreenElement || !el.requestFullscreen) return;
+    if (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) return;
+    try { const p = el.requestFullscreen({ navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (err) { /* not allowed */ }
   };
 
   app.togglePause = function () {
@@ -211,6 +221,7 @@
     g.paused = false;
     g.lastFrameMs = performance.now();
     if (app.musicBefore && app.settings.music > 0) NN.Music.setState(app.musicBefore);
+    app.requestWakeLock();
     app.canvas.focus();
   };
 
@@ -337,9 +348,9 @@
     const add = (rel, href) => { const l = document.createElement('link'); l.rel = rel; l.href = href; document.head.appendChild(l); };
     add('manifest', 'manifest.webmanifest');
     add('apple-touch-icon', 'apple-touch-icon.png');
-    add('icon', 'icon-192.png');
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+      const reg = () => navigator.serviceWorker.register('sw.js').catch(() => {});
+      if (document.readyState === 'complete') reg(); else window.addEventListener('load', reg);
     }
   };
 

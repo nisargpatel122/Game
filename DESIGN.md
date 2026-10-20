@@ -150,3 +150,15 @@ Typical results (Arcade, 3 balls):
 
 Every novice game earns its first reward within 30 seconds (median 6-8 s) and
 starts a mission within about 25 s. Casual mode roughly doubles a novice's game.
+
+## Delivery
+
+- `index.html` is one self-contained file. Opened from disk it makes no network
+  requests at all (the tab icon is a baked-in data URI).
+- Served over http(s), it also adds the manifest and home-screen icon links and
+  registers `sw.js`, a cache-first service worker versioned by the build hash, so the
+  installed app runs offline and picks up new builds on the next launch.
+- Phones playing in a browser tab go full screen on PLAY (where supported); the
+  screen is kept awake during play with the Wake Lock API.
+- `tests/pwa-test.js` checks install, caching and an offline restart;
+  `tests/browser-smoke.js` checks the double-click version loads nothing but itself.

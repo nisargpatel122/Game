@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
-const out = process.argv[2] || path.join(__dirname, '..', 'screenshots');
+const out = process.argv[2] || path.join(require('os').tmpdir(), 'neon-nebula-shots');
 fs.mkdirSync(out, { recursive: true });
 const url = 'file://' + path.join(__dirname, '..', 'index.html');
 
@@ -15,7 +15,8 @@ const url = 'file://' + path.join(__dirname, '..', 'index.html');
     const page = await ctx.newPage();
     page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') results.errors.push(`[${name}] ${m.type()}: ${m.text()}`); });
     page.on('pageerror', (e) => results.errors.push(`[${name}] pageerror: ${e.message}`));
-    page.on('request', (r) => { if (!r.url().startsWith('file://') && !r.url().startsWith('data:')) results.requests.push(r.url()); });
+    // the double-click version must load nothing but itself
+    page.on('request', (r) => { if (r.url() !== url && !r.url().startsWith('data:')) results.requests.push(r.url()); });
     await page.goto(url);
     await page.waitForTimeout(1200);
     await script(page, async (label) => { await page.screenshot({ path: path.join(out, `${name}-${label}.png`) }); });
