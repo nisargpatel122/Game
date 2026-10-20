@@ -202,7 +202,7 @@
     return '<h2>HOW TO PLAY</h2><div class="card">' +
       '<h3>CONTROLS</h3>' + ctrl +
       '<h3>SHOOT THE BLINKING ARROWS</h3><p>Lit arrows show what to shoot next. Each flipper\'s easiest shot is the ramp on its own side.</p>' +
-      '<h3>SKILL SHOT</h3><p>One Orion lane at the top is lit. Flippers move it. Plunge into the lit lane for a big bonus. A full plunge round the top, then the left ramp, is a SUPER SKILL SHOT.</p>' +
+      '<h3>SKILL SHOT</h3><p>One Orion lane at the top is lit. Flippers move it. The glowing post at the top knocks the plunge down into the lanes: land in the lit one for a big bonus. Hold the left flipper as you plunge to drop the post; the ball goes all the way round, then shoot the left ramp for a SUPER SKILL SHOT.</p>' +
       '<h3>MISSIONS</h3><p>Shoot the BLACK HOLE when MISSION is lit to start one of six timed missions (flippers choose). Hit all four PLANET targets to relight it. Finish all six for <b>SUPERNOVA</b>.</p>' +
       '<h3>NEBULA MULTIBALL</h3><p>The left ramp lights LOCK. The right ramp locks a ball in the Docking Bay. Lock two to start 3-ball multiball. Ramps score JACKPOTS, then the Black Hole scores the SUPER JACKPOT.</p>' +
       '<h3>MORE</h3><p>Major shots in a row are COMBOS. Clear the ASTEROID drop targets to light the KICKBACK. ORION lanes raise the bonus multiplier. The upper flipper shoots the COMET LANE.</p>' +

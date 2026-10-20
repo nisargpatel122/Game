@@ -9,10 +9,16 @@
 (function (NN) {
   'use strict';
 
+  // switch events that mean a launched ball has reached the playfield (the
+  // shooter lane and top-of-arch rollovers are still part of the plunge)
+  const SWITCH_EVENTS = { bumper: 1, sling: 1, target: 1, drop: 1, spin: 1, sensor: 1, capture: 1 };
+  const LAUNCH_SENSORS = { shooterLane: 1, orbitTop: 1 };
+
   function Game(opts) {
     opts = opts || {};
     this.P = NN.makePhysicsSettings(opts.tuning);
     this.T = NN.buildTable(this.P);
+    this.T.seed = (opts.seed || 777) + 1;   // the physics (coil and spring variance) gets its own stream
     this.inserts = NN.buildInserts(this.T);
     this.world = new NN.World(this.T, this.P);
     this.rng = NN.U.rng(opts.seed || 777);
@@ -36,6 +42,8 @@
     this.tableShake = { x: 0, y: 0, vx: 0, vy: 0 };
     this.dropColliders = {};
     for (const c of this.world.colliders) if (c.kind === 'drop') this.dropColliders[c.id] = c;
+    this.diverter = this.world.colliders.find((c) => c.id === 'diverter') || null;
+    this.launchUntil = -1;       // the top diverter stays up until then after a plunge
     this.flipperHold = { L: 0, R: 0 };
     this.rules = new NN.Rules(this);
     this.bot = null;
@@ -73,6 +81,7 @@
     this.slowLeft = 0;
     this.setFlippersEnabled(true);
     this.resetDrops();
+    this.launchUntil = -1;
     if (this.world.plunger) { this.world.plunger.pull = 0; this.world.plunger.pulling = false; this.world.plunger.launching = false; }
   };
 
@@ -268,6 +277,7 @@
     }
     if (this.state === 'bonus') this.bonusTick(dt);
     if (this.serveQueue.length) this.processServe();
+    if (this.diverter) this.updateDiverter();
     // scheduled callbacks
     if (this.scheduled.length) {
       for (let i = 0; i < this.scheduled.length; i++) {
@@ -286,9 +296,36 @@
     return !!this.scoopBall || this.mbReleasing || !!this.rules.selecting;
   };
 
+  // ------------------------------------------------------- top diverter ---
+  // The diverter post stands up while a ball waits in the shooter lane, so the
+  // plunge is knocked down into the Orion lanes and pop bumpers. Holding the left
+  // flipper keeps it down (the SUPER SKILL plunge goes all the way round). It
+  // drops as soon as the launched ball reaches the playfield, or a few seconds
+  // after the launch, so orbit shots from the flippers loop normally.
+  Game.prototype.updateDiverter = function () {
+    const d = this.diverter;
+    const live = this.state === 'playing' || this.state === 'attract';
+    const up = live && ((!!this.shooterBall() && !this.buttons.L) || this.time < this.launchUntil);
+    if (up === d.active) return;
+    if (up) {
+      // never pop up through a ball
+      for (const b of this.world.balls) {
+        if (b.state === 'play' && b.layer === 0 && Math.hypot(b.x - d.x, b.y - d.y) < d.R + b.r + 1) return;
+      }
+    }
+    d.active = up;
+    this.fx({ type: 'sound', id: 'diverter', up: up });
+    if (up) this.fx({ type: 'flash', id: 'diverter', x: d.x, y: d.y });
+  };
+
   // ------------------------------------------------------------- events ---
   Game.prototype.handleEvent = function (e) {
     const R = this.rules;
+    // the launched ball's first playfield switch ends the launch: drop the diverter
+    if (e.ball && e.ball.fresh && SWITCH_EVENTS[e.type] && !LAUNCH_SENSORS[e.id]) {
+      e.ball.fresh = false;
+      this.launchUntil = -1;
+    }
     switch (e.type) {
       case 'bumper':
         R.sw('bumper', e.id, e);
@@ -339,6 +376,8 @@
         if (e.kind === 'post' && e.speed > 600) this.fx({ type: 'flash', id: 'post', x: e.x, y: e.y });
         break;
       case 'plungerRelease':
+        // the diverter stays up for this launch unless the left flipper is held
+        if (this.shooterBall()) this.launchUntil = this.buttons.L ? -1 : this.time + 3;
         this.fx({ type: 'sound', id: 'plungerRelease', power: e.power });
         break;
     }

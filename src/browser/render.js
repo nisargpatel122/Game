@@ -409,6 +409,24 @@
       c.strokeStyle = '#e8eaff'; c.lineWidth = 1.6; c.lineCap = 'round';
       c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + Math.cos(ang) * len, hy + Math.sin(ang) * len); c.stroke();
     }
+    // top diverter post: lit amber and glowing while up, a faint socket when down
+    const dv = T.landmarks.diverter, dc = g.diverter;
+    if (dv && dc) {
+      if (dc.active) {
+        const k = fx.hitGlow('diverter', 0.3);
+        c.globalCompositeOperation = 'lighter';
+        c.globalAlpha = Math.min(1, 0.7 + 0.25 * Math.sin(fx.t * 6) + 0.3 * k);
+        c.drawImage(NN.glowSprite(col.amber, 48), dv.x - 22, dv.y - 22, 44, 44);
+        c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+        c.fillStyle = col.amber;
+        c.beginPath(); c.arc(dv.x, dv.y, dv.r, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#fff6d0';
+        c.beginPath(); c.arc(dv.x, dv.y, dv.r * (0.45 + 0.3 * k), 0, Math.PI * 2); c.fill();
+      } else {
+        c.strokeStyle = 'rgba(255,178,56,0.3)'; c.lineWidth = 1;
+        c.beginPath(); c.arc(dv.x, dv.y, dv.r - 0.5, 0, Math.PI * 2); c.stroke();
+      }
+    }
     // kickback
     const kb = T.landmarks.kickback;
     const kk = fx.hitGlow('kickback', 0.3);

@@ -51,7 +51,7 @@ Nudge too much and you get a DANGER warning, then TILT (you lose the ball).
 
 - You get 3 balls (5 in Casual). Score as much as you can.
 - **Blinking arrows show what to shoot next.**
-- **Skill shot:** one of the three ORION lanes at the top is lit. Move it with the flippers, then plunge into it.
+- **Skill shot:** one of the three ORION lanes at the top is lit. Move it with the flippers, then plunge: a post pops up at the top and knocks the ball down into the lanes. Hold the left flipper while plunging to drop the post and send the ball all the way round, then hit the left ramp for a **super skill shot**.
 - **Missions:** shoot the **Black Hole** (the swirl in the middle) when MISSION is lit to start one of six timed missions. Hit the four planet targets to light the next one. Finish all six for **SUPERNOVA**, the wizard mode.
 - **Multiball:** the left ramp lights LOCK, the right ramp locks a ball. Lock two for 3-ball **NEBULA MULTIBALL**. Ramps score jackpots, then the Black Hole scores the SUPER JACKPOT.
 - Shots in a row are **combos**. Clearing the three asteroid drop targets lights the **kickback** that saves a ball down the left side.

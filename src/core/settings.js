@@ -59,7 +59,8 @@
     plungerMaxPull: 60,        // mm of visible travel
     plungerPullSpeed: 1.6,     // fraction of full pull per second while held
     plungerMaxLaunch: 4600,    // mm/s at full pull
-    plungerMinLaunch: 500,     // mm/s at the smallest pull
+    plungerMinLaunch: 800,     // mm/s at the smallest pull (a 20 % pull just clears the lane)
+    plungerVariance: 0.03,     // a real spring never launches exactly the same: +-3 %
 
     // ---- Nudge and tilt -----------------------------------------------------
     nudgeImpulse: 330,         // mm/s added to every ball

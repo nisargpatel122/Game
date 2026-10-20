@@ -72,9 +72,11 @@ test('full table: random balls on every layer never tunnel or escape', () => {
   const rng = NN.U.rng(4242);
   const { w, P, T } = makeWorld();
   const stats = installChecker(w);
+  const diverter = w.colliders.find((c) => c.id === 'diverter');
   let n = 0;
   for (let i = 0; i < 2500; i++) {
     w.balls.length = 0;
+    diverter.active = i % 2 === 1;      // the top diverter post up for half the balls
     let b;
     if (i % 5 === 0) {
       // start on a ramp, moving up or down it
@@ -156,6 +158,40 @@ test('every major shot can be made from a cradled ball', () => {
     note(`${fid}: ` + Object.entries(table[fid]).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', '));
   }
   assert(missing.length === 0, 'unreachable: ' + missing.join(', '));
+});
+
+test('top diverter: raised, plunges come down into the Orion lanes; lowered, they go round', () => {
+  const tally = { up: { lanes: 0, round: 0 }, down: { lanes: 0, round: 0 } };
+  let n = 0, issues = 0;
+  for (let frac = 0.4; frac <= 1.0001; frac += 0.02) {
+    n++;
+    for (const up of [true, false]) {
+      const { w, T } = makeWorld();
+      const stats = installChecker(w);
+      w.colliders.find((c) => c.id === 'diverter').active = up;
+      const b = w.addBall(T.ballStart.x, T.ballStart.y);
+      stepFor(w, 0.3);
+      w.plungerLaunch(frac);
+      let lanes = false, round = false;
+      stepFor(w, 2.5, () => {
+        for (const e of w.events) {
+          if (e.type === 'sensor' && /^lane/.test(e.id) && e.dir === 1) lanes = true;
+          if (e.type === 'sensor' && e.id === 'loTop' && e.dir === -1) round = true;
+        }
+        w.events.length = 0;
+        if (b.state !== 'play') return false;
+      });
+      const t = tally[up ? 'up' : 'down'];
+      if (lanes) t.lanes++;
+      if (round) t.round++;
+      issues += stats.crossings + stats.inside + stats.escapes;
+    }
+  }
+  note(`${n} plunges 40-100 %: post up -> lanes ${tally.up.lanes}, round the top ${tally.up.round}; post down -> lanes ${tally.down.lanes}, round ${tally.down.round}`);
+  assert(issues === 0, issues + ' tunnelling or escape problems');
+  assert(tally.up.lanes >= n * 0.4, 'a raised post should send plunges down into the lanes');
+  assert(tally.up.round <= n * 0.25, 'a raised post should stop most plunges going round');
+  assert(tally.down.round === n, 'with the post down every plunge goes round the top');
 });
 
 test('shots on the fly from each inlane (report)', () => {

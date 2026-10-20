@@ -443,7 +443,9 @@
     const frac = pl.pull / P.plungerMaxPull;
     if (frac < 0.02) { pl.pull = 0; return; }
     pl.launching = true;
-    pl.launchSpeed = P.plungerMinLaunch + (P.plungerMaxLaunch - P.plungerMinLaunch) * frac;
+    // a real spring never launches the ball exactly the same way twice
+    const v = P.plungerMinLaunch + (P.plungerMaxLaunch - P.plungerMinLaunch) * frac;
+    pl.launchSpeed = v * (1 + (this.rng() * 2 - 1) * P.plungerVariance);
     this.emit({ type: 'plungerRelease', power: frac });
   };
 

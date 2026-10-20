@@ -61,6 +61,9 @@ fires thousands of balls and sweeps cradle shots from every flipper.
   the drops), two at the tips of the Black Hole's funnel.
 - **Slingshots**, inlanes and outlanes on both sides. **Kickback** in the left outlane.
 - **Shooter lane** on the right with a one-way gate at the top.
+- **Top diverter**: a pop-up post against the top of the arch, above the Orion lanes.
+  Up while a ball waits in the shooter lane and for its launch, down otherwise.
+- **Plunger** with a little spring variance (+-3 %), so no two plunges are identical.
 
 ## Shot map and flow
 
@@ -84,7 +87,11 @@ the Comet Lane are **major shots** that build combos.
 - **Balls**: 3 (Arcade) or 5 (Casual). Ball save for the first 8 s (Casual 15 s),
   counted from the first playfield switch. Lit SHOOT AGAIN.
 - **Skill shot**: one of the three Orion lanes is lit. Flipper buttons rotate it.
-  Plunge into the lit lane for a skill shot award that grows each time.
+  A diverter post pops up at the top of the arch for every plunge and knocks the
+  ball down into the lanes and pop bumpers (it drops again once the ball reaches
+  the playfield). Land in the lit lane for a skill shot award that grows each time.
+  Holding the left flipper drops the post: the ball goes all the way round and down
+  the left orbit, and the left ramp within 6 s is a **super skill shot**.
 - **Orion lanes**: lighting all three raises the bonus multiplier (up to 6X).
 - **Combos**: major shots within 4 s of each other chain into combos with rising chimes;
   each step adds to the combo multiplier.

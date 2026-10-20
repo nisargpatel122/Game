@@ -97,6 +97,16 @@
     L.shots.leftOrbit = { sensor: 'loTop', dir: 1, x: 31, y: 600, ang: -60 };
     L.shots.rightOrbit = { sensor: 'roTop', dir: 1, x: 444, y: 610, ang: -120 };
 
+    // Top diverter: a rubber post that pops up against the top of the arch, above
+    // the Orion lanes. The game raises it for each plunge (Game.updateDiverter): the
+    // launched ball riding the arch clips it about 30 degrees off centre and is
+    // knocked down into the lanes and pop bumpers instead of going all the way
+    // round. It is down the rest of the time (and starts down), so orbit shots
+    // loop as before.
+    const DV = Object.assign({ x: 234, y: 17.5, r: 4 }, TW.diverter || {});
+    add(S.circle(DV.x, DV.y, DV.r, { mat: 'rubber', kind: 'post', id: 'diverter' })).active = false;
+    L.diverter = { x: DV.x, y: DV.y, r: DV.r };
+
     // -------------------------------------------------------------- ramps ---
     const RW = 22; // half width (wall centre lines); the mouth flares into a funnel
     const ramp = (id, layer, axis, color) => {

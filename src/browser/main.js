@@ -134,6 +134,7 @@
           else if (id === 'kickback') fx.burst(e.x, e.y - 20, [col.lime, '#ffffff'], 24, 380);
           else if (id === 'scoop') fx.ring(e.x, e.y, col.violet, 10, 70, 0.6);
           else if (id === 'post') fx.sparks(e.x, e.y, '#ffffff', 3, 120);
+          else if (id === 'diverter') fx.ring(e.x, e.y, col.amber, 4, 16, 0.25);
           break;
         }
         case 'shake':

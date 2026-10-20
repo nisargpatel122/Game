@@ -49,6 +49,43 @@ test('skill shot: lit lane on the plunge scores and grows', () => {
   assert(R.skillValue === NN.SCORES.skill + NN.SCORES.skillStep, 'skill value grows');
 });
 
+test('top diverter: up for the plunge, down once the ball reaches the playfield', () => {
+  const g = newGame();
+  run_(g, 0.5);
+  assert(g.shooterBall() && g.diverter.active, 'post up while the ball waits in the shooter lane');
+  g.applyInput({ type: 'flip', side: 'L', down: true });
+  run_(g, 0.01);
+  assert(!g.diverter.active, 'holding the left flipper drops it');
+  g.applyInput({ type: 'flip', side: 'L', down: false });
+  run_(g, 0.01);
+  assert(g.diverter.active, 'and it pops back up');
+  let hit = false, sw = null;
+  const orig = g.handleEvent.bind(g);
+  g.handleEvent = (e) => {
+    if (e.type === 'hit' && e.id === 'diverter') hit = true;
+    if (!sw && (e.type === 'bumper' || (e.type === 'sensor' && /^lane/.test(e.id)))) sw = e.type + ' ' + (e.id || '');
+    orig(e);
+  };
+  g.world.plungerLaunch(1);
+  run_(g, 0.15);
+  assert(!g.shooterBall() && g.diverter.active, 'stays up while the plunge goes round the arch');
+  for (let i = 0; i < 480 * 3 && !sw; i++) g.tick(DT);
+  assert(hit && sw, 'the plunge hit the post and came down into the lanes or bumpers (' + sw + ')');
+  run_(g, 0.01);
+  assert(!g.diverter.active, 'down after the first playfield switch, so orbit shots loop');
+  note('full plunge: post, then ' + sw);
+
+  // super skill: hold the left flipper through the plunge
+  const h = newGame();
+  run_(h, 0.5);
+  h.applyInput({ type: 'flip', side: 'L', down: true });
+  run_(h, 0.05);
+  h.world.plungerLaunch(1);
+  run_(h, 1.2);
+  assert(!h.diverter.active, 'post stays down for a left-flipper plunge');
+  assert(h.rules.superSkillUntil > h.time, 'the plunge went round and lit the super skill');
+});
+
 test('Orion belt raises the bonus multiplier', () => {
   const g = newGame();
   const R = g.rules;

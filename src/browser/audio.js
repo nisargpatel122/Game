@@ -191,6 +191,12 @@
     tone('sine', 125 * vary(), t, 0.11, 0.55, { to: 55, pan: p });
     noise(t + 0.03, 0.02, 0.25, { f: 3000, pan: p });
   };
+  // top diverter post: a coil thunk popping up, a softer drop going down
+  S.diverter = (o) => {
+    const t = A.ctx.currentTime, p = panX(234);
+    tone('sine', (o.up ? 180 : 110) * vary(), t, 0.08, o.up ? 0.4 : 0.22, { to: o.up ? 90 : 60, pan: p });
+    noise(t, 0.03, o.up ? 0.3 : 0.15, { type: 'lowpass', f: 1200, pan: p });
+  };
   S.spin = () => {
     if (!allow('spin', 6, 0.012)) return;
     const t = A.ctx.currentTime;
