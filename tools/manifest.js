@@ -9,6 +9,12 @@ module.exports = {
     'src/physics/world.js',
     'src/table/layout.js',
     'src/table/upper.js',
+    'src/game/missions.js',
+    'src/table/inserts.js',
+    'src/game/rules.js',
+    'src/game/game.js',
+    'src/game/bot.js',
+    'src/game/dmd.js',
   ],
   browser: [],
 };
