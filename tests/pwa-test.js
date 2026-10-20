@@ -1,18 +1,25 @@
-// Installable-app check: serves the folder over http://localhost, lets the
-// service worker install, then goes offline and reloads. The game must still
-// start, and the manifest and icons must be valid.
+// Installable-app check. Serves the folder at http://127.0.0.1:<port>/neon-nebula/
+// (the same path GitHub Pages uses) next to a stand-in for another game on the
+// same site, lets the service worker install, then goes offline and reloads.
+// The game must still start, must leave the other game's offline cache alone,
+// must get its own app id, and its Install button must work.
 //   node tests/pwa-test.js
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright');
 const root = path.join(__dirname, '..');
+const BASE = '/neon-nebula/';
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 
 function serve() {
   return new Promise((resolve) => {
     const srv = http.createServer((req, res) => {
       let p = decodeURIComponent(req.url.split('?')[0]);
+      // a page standing in for another game on the same site (like Angry Flock)
+      if (p.startsWith('/other/')) { res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<!doctype html><title>other</title>'); return; }
+      if (!p.startsWith(BASE)) { res.writeHead(404); res.end(); return; }
+      p = p.slice(BASE.length - 1);
       if (p.endsWith('/')) p += 'index.html';
       const f = path.join(root, path.normalize(p));
       if (!f.startsWith(root) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
@@ -37,33 +44,71 @@ function serve() {
   check(man.icons.some((i) => i.purpose === 'maskable') && man.icons.some((i) => i.sizes === '512x512'), 'manifest has 512px and maskable icons');
 
   const srv = await serve();
-  const url = `http://127.0.0.1:${srv.address().port}/`;
+  const origin = `http://127.0.0.1:${srv.address().port}`;
+  const url = origin + BASE;
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+
+  // another game's offline cache, created before ours installs
+  await page.goto(origin + '/other/index.html');
+  await page.evaluate(async () => { const c = await caches.open('angryflock-v6'); await c.put('/other/index.html', new Response('other game')); });
+
   await page.goto(url);
   const sw = await page.evaluate(async () => {
     const reg = await navigator.serviceWorker.ready;
-    return { active: !!reg.active, manifest: !!document.querySelector('link[rel=manifest]'), apple: !!document.querySelector('link[rel=apple-touch-icon]') };
+    return { active: !!reg.active, scope: reg.scope, manifest: !!document.querySelector('link[rel=manifest]'), apple: !!document.querySelector('link[rel=apple-touch-icon]') };
   });
-  check(sw.active, 'service worker installs and activates');
+  check(sw.active && sw.scope === url, 'service worker installs and activates for ' + BASE);
   check(sw.manifest && sw.apple, 'manifest and home-screen icon links are added over http');
-  const cached = await page.evaluate(async () => {
-    const keys = await caches.keys();
-    const c = await caches.open(keys[0]);
-    return (await c.keys()).map((r) => new URL(r.url).pathname);
+  await page.waitForTimeout(500);
+  const caches = await page.evaluate(async () => {
+    const out = {};
+    for (const k of await caches.keys()) out[k] = (await (await caches.open(k)).keys()).map((r) => new URL(r.url).pathname);
+    return out;
   });
-  check(['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'].every((p) => cached.includes(p)), 'game, manifest and icons are cached (' + cached.length + ' files)');
-  // offline reload, both the root and index.html
+  const ours = Object.keys(caches).filter((k) => k.startsWith('neon-nebula-'));
+  check(ours.length === 1, 'exactly one Neon Nebula cache (' + ours.join(', ') + ')');
+  const cached = ours.length ? caches[ours[0]] : [];
+  check(['', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'].every((p) => cached.includes(BASE + p)), 'game, manifest and icons are cached (' + cached.length + ' files)');
+  check(!!caches['angryflock-v6'] && caches['angryflock-v6'].includes('/other/index.html'), "the other game's offline cache is left alone");
+
+  // Chrome's own view: installable, and an app id of our own
+  const cdp = await ctx.newCDPSession(page);
+  const inst = await cdp.send('Page.getInstallabilityErrors');
+  check(inst.installabilityErrors.length === 0, 'Chrome reports no installability errors' + (inst.installabilityErrors.length ? ': ' + JSON.stringify(inst.installabilityErrors) : ''));
+  // Chrome resolves "id" against the site's root, so a plain "./" would claim the
+  // whole site and clash with other games hosted there
+  const am = await cdp.send('Page.getAppManifest');
+  const id = am.manifest && am.manifest.id;
+  check(id === url, "app id is this game's own address (" + id + '), not the whole site');
+
+  // the in-game Install button, driven by a stand-in install prompt
+  const btn = await page.evaluate(async () => {
+    const before = !!document.querySelector('[data-act=install]');
+    const e = new Event('beforeinstallprompt', { cancelable: true });
+    let prompted = false;
+    e.prompt = () => { prompted = true; return Promise.resolve(); };
+    e.userChoice = Promise.resolve({ outcome: 'accepted' });
+    window.dispatchEvent(e);
+    const shown = !!document.querySelector('[data-act=install]');
+    document.querySelector('[data-act=install]').click();
+    await new Promise((r) => setTimeout(r, 50));
+    return { before, shown, defaultPrevented: e.defaultPrevented, prompted, after: !!document.querySelector('[data-act=install]') };
+  });
+  check(!btn.before && btn.shown, 'Install button appears only once the browser offers installing');
+  check(btn.defaultPrevented && btn.prompted && !btn.after, 'tapping it opens the install prompt and the button goes away');
+
+  // offline reload, both the folder and index.html
   await ctx.setOffline(true);
   for (const u of [url, url + 'index.html']) {
     await page.goto(u);
     await page.waitForTimeout(1200);
     const st = await page.evaluate(() => ({ booted: !!(window.NN && NN.app && NN.app.game), state: NN.app && NN.app.game.state, title: NN.app && NN.app.ui.screen }));
-    check(st.booted && st.title === 'title', `offline ${u.replace(url, '/') || '/'} starts the game (state ${st.state}, screen ${st.title})`);
+    check(st.booted && st.title === 'title', `offline ${u.replace(origin, '')} starts the game (state ${st.state}, screen ${st.title})`);
   }
   // start a game offline with a tap
   await page.click('[data-act=play]');

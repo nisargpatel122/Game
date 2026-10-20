@@ -15,8 +15,15 @@ Open **https://nisargpatel122.github.io/neon-nebula/** and tap **PLAY**.
 
 To put it on your home screen like a normal app (it then works with no internet):
 
+- **Android (Chrome):** on the game's title screen tap **INSTALL APP**, then **Install**.
+  (If that button isn't there yet, reload the page once.) The icon appears on your home screen
+  or in your Apps list.
 - **iPhone / iPad (Safari):** tap the **Share** button (square with an arrow), then **Add to Home Screen**, then **Add**.
-- **Android (Chrome):** tap the **⋮** menu, then **Install app** (or **Add to Home screen**), then **Install**.
+  The game's **ADD TO HOME SCREEN** button shows the same steps.
+
+Note: in Chrome for Android versions 154 to 157, the **⋮ → Install** menu can wrongly say
+"This app is already installed" when another app from the same website (nisargpatel122.github.io)
+is installed. The game's own INSTALL APP button avoids that Chrome bug.
 
 ## Play on your computer
 

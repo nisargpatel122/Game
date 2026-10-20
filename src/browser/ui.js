@@ -101,6 +101,8 @@
       case 'scores': this.open('scores'); break;
       case 'stats': this.open('stats'); break;
       case 'settings': this.open('settings'); break;
+      case 'install': app.promptInstall(); break;
+      case 'iosinstall': this.open('iosinstall'); break;
       case 'back': this.back(); break;
       case 'resume': app.resume(); break;
       case 'restart': app.startGame(); break;
@@ -145,7 +147,30 @@
       '<div class="row"><button class="btn" data-act="diff">' + (d === 'arcade' ? 'ARCADE · 3 BALLS' : 'CASUAL · 5 BALLS') + '</button></div>' +
       '<div class="row"><button class="btn" data-act="howto">HOW TO PLAY</button><button class="btn" data-act="scores">HIGH SCORES</button></div>' +
       '<div class="row"><button class="btn" data-act="stats">STATS</button><button class="btn" data-act="settings">SETTINGS</button></div>' +
+      this.installButton() +
       '<div class="hint">' + (this.app.isTouch() ? 'Tap left / right side for flippers · drag the plunger down' : 'Z / Shift / ← and / / Shift / → flip · hold Space to launch') + '<br>No ads. Ever. Works offline.</div>';
+  };
+
+  // shown only when the browser can install the game right now (or on iPhone,
+  // where adding to the home screen is done from the Share menu)
+  UI.prototype.installButton = function () {
+    const offer = this.app.installOffer();
+    if (offer === 'prompt') return '<button class="btn install" data-act="install">INSTALL APP</button>';
+    if (offer === 'ios') return '<button class="btn install" data-act="iosinstall">ADD TO HOME SCREEN</button>';
+    return '';
+  };
+
+  UI.prototype.refreshTitle = function () {
+    if (this.screen === 'title') this.render('title');
+  };
+
+  UI.prototype.scr_iosinstall = function () {
+    return '<h2>ADD TO HOME SCREEN</h2><div class="card">' +
+      '<p>1. Tap the <b>Share</b> button (the square with an arrow).</p>' +
+      '<p>2. Tap <b>Add to Home Screen</b> (scroll down the list if you don\'t see it).</p>' +
+      '<p>3. Tap <b>Add</b>.</p>' +
+      '<p>Neon Nebula then opens from your home screen, full screen, and works without internet.</p>' +
+      '</div><button class="btn" data-act="back">BACK</button>';
   };
 
   UI.prototype.scr_howto = function () {

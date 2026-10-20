@@ -343,8 +343,47 @@
 
   // Installable app extras only when served over http(s); the double-clicked
   // file:// version makes no requests at all.
+  app.isStandalone = function () {
+    return navigator.standalone === true ||
+      !!(window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+  };
+
+  // 'prompt' when the browser handed us an install prompt, 'ios' on iPhone/iPad
+  // (installed from the Share menu), otherwise null
+  app.installOffer = function () {
+    if (!/^https?:$/.test(location.protocol) || app.isStandalone()) return null;
+    if (app.installEvent) return 'prompt';
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return ios ? 'ios' : null;
+  };
+
+  // The game's own Install button. Besides being easier to find than the browser
+  // menu, it avoids a Chrome for Android bug (versions 154-157) where the menu
+  // reports "already installed" for every app on a site once any one of them is.
+  app.promptInstall = function () {
+    const ev = app.installEvent;
+    if (!ev) return;
+    app.installEvent = null;
+    try {
+      ev.prompt();
+      Promise.resolve(ev.userChoice).catch(() => {}).then(() => app.ui.refreshTitle());
+    } catch (err) {
+      app.ui.refreshTitle();
+    }
+  };
+
   app.installPWA = function () {
     if (!/^https?:$/.test(location.protocol)) return;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      app.installEvent = e;
+      app.ui.refreshTitle();
+    });
+    window.addEventListener('appinstalled', () => {
+      app.installEvent = null;
+      app.ui.refreshTitle();
+      app.ui.toast('<b>INSTALLED</b><br>Neon Nebula is on your home screen or in your apps list');
+    });
     const add = (rel, href) => { const l = document.createElement('link'); l.rel = rel; l.href = href; document.head.appendChild(l); };
     add('manifest', 'manifest.webmanifest');
     add('apple-touch-icon', 'apple-touch-icon.png');

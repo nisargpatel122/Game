@@ -2,7 +2,7 @@
   "name": "Neon Nebula Pinball",
   "short_name": "Neon Nebula",
   "description": "A neon space pinball game. Free, offline, no ads ever.",
-  "id": "./",
+  "id": "/neon-nebula/",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

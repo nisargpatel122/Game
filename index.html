@@ -74,6 +74,7 @@ canvas#game { position: fixed; left: 0; top: 0; display: block; outline: none; }
   letter-spacing: 2px; font-weight: 700; cursor: pointer; text-align: center; font-family: inherit;
 }
 .btn.primary { border-color: rgba(255, 61, 240, 0.8); box-shadow: 0 0 16px rgba(255, 61, 240, 0.35); font-size: 19px; }
+.btn.install { border-color: rgba(61, 255, 138, 0.7); color: var(--lime); }
 .btn.sel, .btn:focus-visible { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(54, 226, 255, 0.5), 0 0 18px rgba(54, 226, 255, 0.35); }
 .row { display: flex; gap: 8px; }
 .row .btn { flex: 1; }
@@ -131,7 +132,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
 <div id="tuning"></div>
 <noscript>NEON NEBULA needs JavaScript turned on.</noscript>
 <script>
-/* NEON NEBULA v1.0.0-f2a03495 - all code below is generated from src/ by tools/build.js */
+/* NEON NEBULA v1.0.0-71a7de82 - all code below is generated from src/ by tools/build.js */
 
 /* ---- src/core/settings.js ---- */
 /*
@@ -6751,6 +6752,8 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
       case 'scores': this.open('scores'); break;
       case 'stats': this.open('stats'); break;
       case 'settings': this.open('settings'); break;
+      case 'install': app.promptInstall(); break;
+      case 'iosinstall': this.open('iosinstall'); break;
       case 'back': this.back(); break;
       case 'resume': app.resume(); break;
       case 'restart': app.startGame(); break;
@@ -6795,7 +6798,30 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
       '<div class="row"><button class="btn" data-act="diff">' + (d === 'arcade' ? 'ARCADE · 3 BALLS' : 'CASUAL · 5 BALLS') + '</button></div>' +
       '<div class="row"><button class="btn" data-act="howto">HOW TO PLAY</button><button class="btn" data-act="scores">HIGH SCORES</button></div>' +
       '<div class="row"><button class="btn" data-act="stats">STATS</button><button class="btn" data-act="settings">SETTINGS</button></div>' +
+      this.installButton() +
       '<div class="hint">' + (this.app.isTouch() ? 'Tap left / right side for flippers · drag the plunger down' : 'Z / Shift / ← and / / Shift / → flip · hold Space to launch') + '<br>No ads. Ever. Works offline.</div>';
+  };
+
+  // shown only when the browser can install the game right now (or on iPhone,
+  // where adding to the home screen is done from the Share menu)
+  UI.prototype.installButton = function () {
+    const offer = this.app.installOffer();
+    if (offer === 'prompt') return '<button class="btn install" data-act="install">INSTALL APP</button>';
+    if (offer === 'ios') return '<button class="btn install" data-act="iosinstall">ADD TO HOME SCREEN</button>';
+    return '';
+  };
+
+  UI.prototype.refreshTitle = function () {
+    if (this.screen === 'title') this.render('title');
+  };
+
+  UI.prototype.scr_iosinstall = function () {
+    return '<h2>ADD TO HOME SCREEN</h2><div class="card">' +
+      '<p>1. Tap the <b>Share</b> button (the square with an arrow).</p>' +
+      '<p>2. Tap <b>Add to Home Screen</b> (scroll down the list if you don\'t see it).</p>' +
+      '<p>3. Tap <b>Add</b>.</p>' +
+      '<p>Neon Nebula then opens from your home screen, full screen, and works without internet.</p>' +
+      '</div><button class="btn" data-act="back">BACK</button>';
   };
 
   UI.prototype.scr_howto = function () {
@@ -7373,8 +7399,47 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
 
   // Installable app extras only when served over http(s); the double-clicked
   // file:// version makes no requests at all.
+  app.isStandalone = function () {
+    return navigator.standalone === true ||
+      !!(window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+  };
+
+  // 'prompt' when the browser handed us an install prompt, 'ios' on iPhone/iPad
+  // (installed from the Share menu), otherwise null
+  app.installOffer = function () {
+    if (!/^https?:$/.test(location.protocol) || app.isStandalone()) return null;
+    if (app.installEvent) return 'prompt';
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return ios ? 'ios' : null;
+  };
+
+  // The game's own Install button. Besides being easier to find than the browser
+  // menu, it avoids a Chrome for Android bug (versions 154-157) where the menu
+  // reports "already installed" for every app on a site once any one of them is.
+  app.promptInstall = function () {
+    const ev = app.installEvent;
+    if (!ev) return;
+    app.installEvent = null;
+    try {
+      ev.prompt();
+      Promise.resolve(ev.userChoice).catch(() => {}).then(() => app.ui.refreshTitle());
+    } catch (err) {
+      app.ui.refreshTitle();
+    }
+  };
+
   app.installPWA = function () {
     if (!/^https?:$/.test(location.protocol)) return;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      app.installEvent = e;
+      app.ui.refreshTitle();
+    });
+    window.addEventListener('appinstalled', () => {
+      app.installEvent = null;
+      app.ui.refreshTitle();
+      app.ui.toast('<b>INSTALLED</b><br>Neon Nebula is on your home screen or in your apps list');
+    });
     const add = (rel, href) => { const l = document.createElement('link'); l.rel = rel; l.href = href; document.head.appendChild(l); };
     add('manifest', 'manifest.webmanifest');
     add('apple-touch-icon', 'apple-touch-icon.png');
