@@ -1,0 +1,61 @@
+diff --git a/src/game/game.js b/src/game/game.js
+index 46b069c..d3b3107 100644
+--- a/src/game/game.js
++++ b/src/game/game.js
+@@ -81,6 +81,9 @@
+     this.bot = null;
+     this.rules.demo = false;
+     this.rules.newGame(difficulty || 'arcade', seed);
++    // the coils' small kick-to-kick variations follow the game seed too, so
++    // every game (and every headless run) does not replay the same sequence
++    this.world.rng = NN.U.rng(seed != null ? seed * 7919 + 13 : (this.rng() * 1e9) | 0);
+     this.state = 'playing';
+     this.rules.startBall();
+     this.serveBall(false);
+diff --git a/src/table/upper.js b/src/table/upper.js
+index 3928786..e7dd62a 100644
+--- a/src/table/upper.js
++++ b/src/table/upper.js
+@@ -76,6 +76,33 @@
+     post(rip[0], rip[1], 5, { color: 'cyan' });
+     L.rightOrbitInner = RIW;
+ 
++    // Plunge lane: the shooter lane wall carries on up the arch, so a plunged
++    // ball rides its own channel outside the right orbit. Where the channel
++    // ends a one-way gate turns the plunge down into the Orion lanes and pop
++    // bumpers. Right orbit balls run inside the gate's tip; left orbit balls
++    // coming round the top swing it open and go down the plunge lane, out
++    // under the shooter gate into the right orbit as before.
++    const PL = Object.assign({ R: 209, end: -65, hinge: -75, inc: 45, len: 24, mat: 'metal' }, TW.plunge || {});
++    add(S.arc(AC[0], AC[1], PL.R, PL.end * D, -PL.end * D, { mat: 'metal', r: 2 }));
++    T.draw.walls.push({ arc: [AC[0], AC[1], PL.R, PL.end * D, -PL.end * D], r: 2, color: 'violet', neon: true });
++    {
++      const hx = AC[0] + 242 * Math.cos(PL.hinge * D), hy = AC[1] + 242 * Math.sin(PL.hinge * D);
++      const fa = (PL.hinge - 90 - PL.inc) * D;
++      const tx = hx + PL.len * Math.cos(fa), ty = hy + PL.len * Math.sin(fa);
++      const l = Math.hypot(tx - hx, ty - hy);
++      let nx = -(ty - hy) / l, ny = (tx - hx) / l;
++      // the closed face looks back down the plunge lane
++      const ix = AC[0] + 229 * Math.cos((PL.hinge + 12) * D), iy = AC[1] + 229 * Math.sin((PL.hinge + 12) * D);
++      if ((ix - hx) * nx + (iy - hy) * ny < 0) { nx = -nx; ny = -ny; }
++      add(S.seg(tx, ty, hx, hy, { mat: PL.mat, r: 1.5, kind: 'gate', id: 'topGate', oneWay: { nx: nx, ny: ny } }));
++      T.draw.gates.push({ id: 'topGate', ax: tx, ay: ty, bx: hx, by: hy });
++    }
++    if (PL.kick) {
++      const K = PL.kick;
++      const bx = K.x + K.len * Math.cos(K.ang * D), by = K.y + K.len * Math.sin(K.ang * D);
++      wall([[K.x, K.y], [bx, by]], { r: 3, mat: K.mat || 'metal', color: 'violet' });
++    }
++
+     // Spinner in the left orbit
+     T.spinners.push({ id: 'spinner', x0: 13, x1: 49, y: 278, gain: 0.03, slow: 0.05, friction: 1.6, drag: 3 });
+     lineSensor('spinner', 12, 278, 49, 278, 0, -1, { actions: [{ do: 'spinner', spinner: 'spinner' }] });
+@@ -156,7 +183,7 @@
+     T.draw.lanes = [];
+     const guides = [165, 205, 245, 285];
+     for (const gx of guides) {
+-      wall([[gx, 92], [gx, 140]], { r: 3, mat: 'metal', color: 'white' });
++      wall([[gx, TW.laneTop || 92], [gx, 140]], { r: 3, mat: 'metal', color: 'white' });
+     }
+     for (let i = 0; i < 3; i++) {
+       const x0 = guides[i] + 3, x1 = guides[i + 1] - 3;

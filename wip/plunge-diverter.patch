@@ -1,0 +1,406 @@
+From 4df97f91b85373f227ae6f830f899ac6bb8de262 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 20 Oct 2026 23:43:42 +0000
+Subject: [PATCH] Pop-up top diverter: plunges come down into the Orion lanes
+ and bumpers
+
+Every launch rode the top arch all the way round, down the left orbit and
+onto the left flipper. A rubber post (r 4 mm) now pops up against the top of
+the arch above the Orion lanes while a ball waits in the shooter lane and for
+its launch. The plunged ball clips it about 30 degrees off centre and is
+knocked down into the lanes, guide tips and pop bumpers. It drops at the
+launched ball's first playfield switch (or 3 s after launch), so orbit shots
+from the flippers loop as before; it starts down in the table data.
+
+- Holding the left flipper keeps the post down: the plunge goes round, lands
+  in the left cradle, and the left ramp within 6 s is still the SUPER SKILL.
+- Plunger spring variance +-3 % (physical, per launch) and a per-game physics
+  random stream, so full pulls and touch taps are not identical every time.
+- plungerMinLaunch 500 -> 800 mm/s so a 20 % pull clears the shooter lane
+  gate (soft pulls no longer fall back a quarter of the time).
+- Drawn as a glowing amber post when up, a faint socket when down, with a
+  coil thunk and a ring flash as it rises; help text, README and DESIGN.
+- Tests: diverter rise/drop and super skill (rules), plunges with the post
+  up/down plus the robustness sweep with the post up for half the balls.
+
+plunge-map (40/style): full top 42% lanes 78%, strong 45%/72%, medium
+40%/63%, soft 33%/57% (no fall-backs), tap 35%/65%; both flippers about even.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01MRNPNtaUcQXCKgby8bGVXz
+---
+ DESIGN.md             |  9 ++++++++-
+ README.md             |  2 +-
+ src/browser/audio.js  |  6 ++++++
+ src/browser/main.js   |  1 +
+ src/browser/render.js | 18 ++++++++++++++++++
+ src/browser/ui.js     |  2 +-
+ src/core/settings.js  |  3 ++-
+ src/game/game.js      | 39 +++++++++++++++++++++++++++++++++++++++
+ src/physics/world.js  |  4 +++-
+ src/table/upper.js    | 10 ++++++++++
+ tests/rules.test.js   | 37 +++++++++++++++++++++++++++++++++++++
+ tests/table.test.js   | 36 ++++++++++++++++++++++++++++++++++++
+ 12 files changed, 162 insertions(+), 5 deletions(-)
+
+diff --git a/DESIGN.md b/DESIGN.md
+index 8c5d179..99fc305 100644
+--- a/DESIGN.md
++++ b/DESIGN.md
+@@ -61,6 +61,9 @@ fires thousands of balls and sweeps cradle shots from every flipper.
+   the drops), two at the tips of the Black Hole's funnel.
+ - **Slingshots**, inlanes and outlanes on both sides. **Kickback** in the left outlane.
+ - **Shooter lane** on the right with a one-way gate at the top.
++- **Top diverter**: a pop-up post against the top of the arch, above the Orion lanes.
++  Up while a ball waits in the shooter lane and for its launch, down otherwise.
++- **Plunger** with a little spring variance (+-3 %), so no two plunges are identical.
+ 
+ ## Shot map and flow
+ 
+@@ -84,7 +87,11 @@ the Comet Lane are **major shots** that build combos.
+ - **Balls**: 3 (Arcade) or 5 (Casual). Ball save for the first 8 s (Casual 15 s),
+   counted from the first playfield switch. Lit SHOOT AGAIN.
+ - **Skill shot**: one of the three Orion lanes is lit. Flipper buttons rotate it.
+-  Plunge into the lit lane for a skill shot award that grows each time.
++  A diverter post pops up at the top of the arch for every plunge and knocks the
++  ball down into the lanes and pop bumpers (it drops again once the ball reaches
++  the playfield). Land in the lit lane for a skill shot award that grows each time.
++  Holding the left flipper drops the post: the ball goes all the way round and down
++  the left orbit, and the left ramp within 6 s is a **super skill shot**.
+ - **Orion lanes**: lighting all three raises the bonus multiplier (up to 6X).
+ - **Combos**: major shots within 4 s of each other chain into combos with rising chimes;
+   each step adds to the combo multiplier.
+diff --git a/README.md b/README.md
+index 555a962..c7a838f 100644
+--- a/README.md
++++ b/README.md
+@@ -51,7 +51,7 @@ Nudge too much and you get a DANGER warning, then TILT (you lose the ball).
+ 
+ - You get 3 balls (5 in Casual). Score as much as you can.
+ - **Blinking arrows show what to shoot next.**
+-- **Skill shot:** one of the three ORION lanes at the top is lit. Move it with the flippers, then plunge into it.
++- **Skill shot:** one of the three ORION lanes at the top is lit. Move it with the flippers, then plunge: a post pops up at the top and knocks the ball down into the lanes. Hold the left flipper while plunging to drop the post and send the ball all the way round, then hit the left ramp for a **super skill shot**.
+ - **Missions:** shoot the **Black Hole** (the swirl in the middle) when MISSION is lit to start one of six timed missions. Hit the four planet targets to light the next one. Finish all six for **SUPERNOVA**, the wizard mode.
+ - **Multiball:** the left ramp lights LOCK, the right ramp locks a ball. Lock two for 3-ball **NEBULA MULTIBALL**. Ramps score jackpots, then the Black Hole scores the SUPER JACKPOT.
+ - Shots in a row are **combos**. Clearing the three asteroid drop targets lights the **kickback** that saves a ball down the left side.
+diff --git a/src/browser/audio.js b/src/browser/audio.js
+index f96c275..260bd05 100644
+--- a/src/browser/audio.js
++++ b/src/browser/audio.js
+@@ -191,6 +191,12 @@
+     tone('sine', 125 * vary(), t, 0.11, 0.55, { to: 55, pan: p });
+     noise(t + 0.03, 0.02, 0.25, { f: 3000, pan: p });
+   };
++  // top diverter post: a coil thunk popping up, a softer drop going down
++  S.diverter = (o) => {
++    const t = A.ctx.currentTime, p = panX(234);
++    tone('sine', (o.up ? 180 : 110) * vary(), t, 0.08, o.up ? 0.4 : 0.22, { to: o.up ? 90 : 60, pan: p });
++    noise(t, 0.03, o.up ? 0.3 : 0.15, { type: 'lowpass', f: 1200, pan: p });
++  };
+   S.spin = () => {
+     if (!allow('spin', 6, 0.012)) return;
+     const t = A.ctx.currentTime;
+diff --git a/src/browser/main.js b/src/browser/main.js
+index f73d297..68b924b 100644
+--- a/src/browser/main.js
++++ b/src/browser/main.js
+@@ -132,6 +132,7 @@
+           else if (id === 'kickback') fx.burst(e.x, e.y - 20, [col.lime, '#ffffff'], 24, 380);
+           else if (id === 'scoop') fx.ring(e.x, e.y, col.violet, 10, 70, 0.6);
+           else if (id === 'post') fx.sparks(e.x, e.y, '#ffffff', 3, 120);
++          else if (id === 'diverter') fx.ring(e.x, e.y, col.amber, 4, 16, 0.25);
+           break;
+         }
+         case 'shake':
+diff --git a/src/browser/render.js b/src/browser/render.js
+index ff9d2df..3923bfa 100644
+--- a/src/browser/render.js
++++ b/src/browser/render.js
+@@ -406,6 +406,24 @@
+       c.strokeStyle = '#e8eaff'; c.lineWidth = 1.6; c.lineCap = 'round';
+       c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + Math.cos(ang) * len, hy + Math.sin(ang) * len); c.stroke();
+     }
++    // top diverter post: lit amber and glowing while up, a faint socket when down
++    const dv = T.landmarks.diverter, dc = g.diverter;
++    if (dv && dc) {
++      if (dc.active) {
++        const k = fx.hitGlow('diverter', 0.3);
++        c.globalCompositeOperation = 'lighter';
++        c.globalAlpha = Math.min(1, 0.7 + 0.25 * Math.sin(fx.t * 6) + 0.3 * k);
++        c.drawImage(NN.glowSprite(col.amber, 48), dv.x - 22, dv.y - 22, 44, 44);
++        c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
++        c.fillStyle = col.amber;
++        c.beginPath(); c.arc(dv.x, dv.y, dv.r, 0, Math.PI * 2); c.fill();
++        c.fillStyle = '#fff6d0';
++        c.beginPath(); c.arc(dv.x, dv.y, dv.r * (0.45 + 0.3 * k), 0, Math.PI * 2); c.fill();
++      } else {
++        c.strokeStyle = 'rgba(255,178,56,0.3)'; c.lineWidth = 1;
++        c.beginPath(); c.arc(dv.x, dv.y, dv.r - 0.5, 0, Math.PI * 2); c.stroke();
++      }
++    }
+     // kickback
+     const kb = T.landmarks.kickback;
+     const kk = fx.hitGlow('kickback', 0.3);
+diff --git a/src/browser/ui.js b/src/browser/ui.js
+index f644baa..b4bbc39 100644
+--- a/src/browser/ui.js
++++ b/src/browser/ui.js
+@@ -201,7 +201,7 @@
+     return '<h2>HOW TO PLAY</h2><div class="card">' +
+       '<h3>CONTROLS</h3>' + ctrl +
+       '<h3>SHOOT THE BLINKING ARROWS</h3><p>Lit arrows show what to shoot next. Each flipper\'s easiest shot is the ramp on its own side.</p>' +
+-      '<h3>SKILL SHOT</h3><p>One Orion lane at the top is lit. Flippers move it. Plunge into the lit lane for a big bonus. A full plunge round the top, then the left ramp, is a SUPER SKILL SHOT.</p>' +
++      '<h3>SKILL SHOT</h3><p>One Orion lane at the top is lit. Flippers move it. The glowing post at the top knocks the plunge down into the lanes: land in the lit one for a big bonus. Hold the left flipper as you plunge to drop the post; the ball goes all the way round, then shoot the left ramp for a SUPER SKILL SHOT.</p>' +
+       '<h3>MISSIONS</h3><p>Shoot the BLACK HOLE when MISSION is lit to start one of six timed missions (flippers choose). Hit all four PLANET targets to relight it. Finish all six for <b>SUPERNOVA</b>.</p>' +
+       '<h3>NEBULA MULTIBALL</h3><p>The left ramp lights LOCK. The right ramp locks a ball in the Docking Bay. Lock two to start 3-ball multiball. Ramps score JACKPOTS, then the Black Hole scores the SUPER JACKPOT.</p>' +
+       '<h3>MORE</h3><p>Major shots in a row are COMBOS. Clear the ASTEROID drop targets to light the KICKBACK. ORION lanes raise the bonus multiplier. The upper flipper shoots the COMET LANE.</p>' +
+diff --git a/src/core/settings.js b/src/core/settings.js
+index 01be99d..3efd3cb 100644
+--- a/src/core/settings.js
++++ b/src/core/settings.js
+@@ -59,7 +59,8 @@
+     plungerMaxPull: 60,        // mm of visible travel
+     plungerPullSpeed: 1.6,     // fraction of full pull per second while held
+     plungerMaxLaunch: 4600,    // mm/s at full pull
+-    plungerMinLaunch: 500,     // mm/s at the smallest pull
++    plungerMinLaunch: 800,     // mm/s at the smallest pull (a 20 % pull just clears the lane)
++    plungerVariance: 0.03,     // a real spring never launches exactly the same: +-3 %
+ 
+     // ---- Nudge and tilt -----------------------------------------------------
+     nudgeImpulse: 330,         // mm/s added to every ball
+diff --git a/src/game/game.js b/src/game/game.js
+index 46b069c..8c60a45 100644
+--- a/src/game/game.js
++++ b/src/game/game.js
+@@ -9,10 +9,16 @@
+ (function (NN) {
+   'use strict';
+ 
++  // switch events that mean a launched ball has reached the playfield (the
++  // shooter lane and top-of-arch rollovers are still part of the plunge)
++  const SWITCH_EVENTS = { bumper: 1, sling: 1, target: 1, drop: 1, spin: 1, sensor: 1, capture: 1 };
++  const LAUNCH_SENSORS = { shooterLane: 1, orbitTop: 1 };
++
+   function Game(opts) {
+     opts = opts || {};
+     this.P = NN.makePhysicsSettings(opts.tuning);
+     this.T = NN.buildTable(this.P);
++    this.T.seed = (opts.seed || 777) + 1;   // the physics (coil and spring variance) gets its own stream
+     this.inserts = NN.buildInserts(this.T);
+     this.world = new NN.World(this.T, this.P);
+     this.rng = NN.U.rng(opts.seed || 777);
+@@ -36,6 +42,8 @@
+     this.tableShake = { x: 0, y: 0, vx: 0, vy: 0 };
+     this.dropColliders = {};
+     for (const c of this.world.colliders) if (c.kind === 'drop') this.dropColliders[c.id] = c;
++    this.diverter = this.world.colliders.find((c) => c.id === 'diverter') || null;
++    this.launchUntil = -1;       // the top diverter stays up until then after a plunge
+     this.flipperHold = { L: 0, R: 0 };
+     this.rules = new NN.Rules(this);
+     this.bot = null;
+@@ -73,6 +81,7 @@
+     this.slowLeft = 0;
+     this.setFlippersEnabled(true);
+     this.resetDrops();
++    this.launchUntil = -1;
+     if (this.world.plunger) { this.world.plunger.pull = 0; this.world.plunger.pulling = false; this.world.plunger.launching = false; }
+   };
+ 
+@@ -268,6 +277,7 @@
+     }
+     if (this.state === 'bonus') this.bonusTick(dt);
+     if (this.serveQueue.length) this.processServe();
++    if (this.diverter) this.updateDiverter();
+     // scheduled callbacks
+     if (this.scheduled.length) {
+       for (let i = 0; i < this.scheduled.length; i++) {
+@@ -286,9 +296,36 @@
+     return !!this.scoopBall || this.mbReleasing || !!this.rules.selecting;
+   };
+ 
++  // ------------------------------------------------------- top diverter ---
++  // The diverter post stands up while a ball waits in the shooter lane, so the
++  // plunge is knocked down into the Orion lanes and pop bumpers. Holding the left
++  // flipper keeps it down (the SUPER SKILL plunge goes all the way round). It
++  // drops as soon as the launched ball reaches the playfield, or a few seconds
++  // after the launch, so orbit shots from the flippers loop normally.
++  Game.prototype.updateDiverter = function () {
++    const d = this.diverter;
++    const live = this.state === 'playing' || this.state === 'attract';
++    const up = live && ((!!this.shooterBall() && !this.buttons.L) || this.time < this.launchUntil);
++    if (up === d.active) return;
++    if (up) {
++      // never pop up through a ball
++      for (const b of this.world.balls) {
++        if (b.state === 'play' && b.layer === 0 && Math.hypot(b.x - d.x, b.y - d.y) < d.R + b.r + 1) return;
++      }
++    }
++    d.active = up;
++    this.fx({ type: 'sound', id: 'diverter', up: up });
++    if (up) this.fx({ type: 'flash', id: 'diverter', x: d.x, y: d.y });
++  };
++
+   // ------------------------------------------------------------- events ---
+   Game.prototype.handleEvent = function (e) {
+     const R = this.rules;
++    // the launched ball's first playfield switch ends the launch: drop the diverter
++    if (e.ball && e.ball.fresh && SWITCH_EVENTS[e.type] && !LAUNCH_SENSORS[e.id]) {
++      e.ball.fresh = false;
++      this.launchUntil = -1;
++    }
+     switch (e.type) {
+       case 'bumper':
+         R.sw('bumper', e.id, e);
+@@ -339,6 +376,8 @@
+         if (e.kind === 'post' && e.speed > 600) this.fx({ type: 'flash', id: 'post', x: e.x, y: e.y });
+         break;
+       case 'plungerRelease':
++        // the diverter stays up for this launch unless the left flipper is held
++        if (this.shooterBall()) this.launchUntil = this.buttons.L ? -1 : this.time + 3;
+         this.fx({ type: 'sound', id: 'plungerRelease', power: e.power });
+         break;
+     }
+diff --git a/src/physics/world.js b/src/physics/world.js
+index bf7f552..f65b55c 100644
+--- a/src/physics/world.js
++++ b/src/physics/world.js
+@@ -443,7 +443,9 @@
+     const frac = pl.pull / P.plungerMaxPull;
+     if (frac < 0.02) { pl.pull = 0; return; }
+     pl.launching = true;
+-    pl.launchSpeed = P.plungerMinLaunch + (P.plungerMaxLaunch - P.plungerMinLaunch) * frac;
++    // a real spring never launches the ball exactly the same way twice
++    const v = P.plungerMinLaunch + (P.plungerMaxLaunch - P.plungerMinLaunch) * frac;
++    pl.launchSpeed = v * (1 + (this.rng() * 2 - 1) * P.plungerVariance);
+     this.emit({ type: 'plungerRelease', power: frac });
+   };
+ 
+diff --git a/src/table/upper.js b/src/table/upper.js
+index 3928786..f373168 100644
+--- a/src/table/upper.js
++++ b/src/table/upper.js
+@@ -97,6 +97,16 @@
+     L.shots.leftOrbit = { sensor: 'loTop', dir: 1, x: 31, y: 600, ang: -60 };
+     L.shots.rightOrbit = { sensor: 'roTop', dir: 1, x: 444, y: 610, ang: -120 };
+ 
++    // Top diverter: a rubber post that pops up against the top of the arch, above
++    // the Orion lanes. The game raises it for each plunge (Game.updateDiverter): the
++    // launched ball riding the arch clips it about 30 degrees off centre and is
++    // knocked down into the lanes and pop bumpers instead of going all the way
++    // round. It is down the rest of the time (and starts down), so orbit shots
++    // loop as before.
++    const DV = Object.assign({ x: 234, y: 17.5, r: 4 }, TW.diverter || {});
++    add(S.circle(DV.x, DV.y, DV.r, { mat: 'rubber', kind: 'post', id: 'diverter' })).active = false;
++    L.diverter = { x: DV.x, y: DV.y, r: DV.r };
++
+     // -------------------------------------------------------------- ramps ---
+     const RW = 22; // half width (wall centre lines); the mouth flares into a funnel
+     const ramp = (id, layer, axis, color) => {
+diff --git a/tests/rules.test.js b/tests/rules.test.js
+index 7f5a11b..d5f4e89 100644
+--- a/tests/rules.test.js
++++ b/tests/rules.test.js
+@@ -49,6 +49,43 @@ test('skill shot: lit lane on the plunge scores and grows', () => {
+   assert(R.skillValue === NN.SCORES.skill + NN.SCORES.skillStep, 'skill value grows');
+ });
+ 
++test('top diverter: up for the plunge, down once the ball reaches the playfield', () => {
++  const g = newGame();
++  run_(g, 0.5);
++  assert(g.shooterBall() && g.diverter.active, 'post up while the ball waits in the shooter lane');
++  g.applyInput({ type: 'flip', side: 'L', down: true });
++  run_(g, 0.01);
++  assert(!g.diverter.active, 'holding the left flipper drops it');
++  g.applyInput({ type: 'flip', side: 'L', down: false });
++  run_(g, 0.01);
++  assert(g.diverter.active, 'and it pops back up');
++  let hit = false, sw = null;
++  const orig = g.handleEvent.bind(g);
++  g.handleEvent = (e) => {
++    if (e.type === 'hit' && e.id === 'diverter') hit = true;
++    if (!sw && (e.type === 'bumper' || (e.type === 'sensor' && /^lane/.test(e.id)))) sw = e.type + ' ' + (e.id || '');
++    orig(e);
++  };
++  g.world.plungerLaunch(1);
++  run_(g, 0.15);
++  assert(!g.shooterBall() && g.diverter.active, 'stays up while the plunge goes round the arch');
++  for (let i = 0; i < 480 * 3 && !sw; i++) g.tick(DT);
++  assert(hit && sw, 'the plunge hit the post and came down into the lanes or bumpers (' + sw + ')');
++  run_(g, 0.01);
++  assert(!g.diverter.active, 'down after the first playfield switch, so orbit shots loop');
++  note('full plunge: post, then ' + sw);
++
++  // super skill: hold the left flipper through the plunge
++  const h = newGame();
++  run_(h, 0.5);
++  h.applyInput({ type: 'flip', side: 'L', down: true });
++  run_(h, 0.05);
++  h.world.plungerLaunch(1);
++  run_(h, 1.2);
++  assert(!h.diverter.active, 'post stays down for a left-flipper plunge');
++  assert(h.rules.superSkillUntil > h.time, 'the plunge went round and lit the super skill');
++});
++
+ test('Orion belt raises the bonus multiplier', () => {
+   const g = newGame();
+   const R = g.rules;
+diff --git a/tests/table.test.js b/tests/table.test.js
+index ae3ee67..e0097dd 100644
+--- a/tests/table.test.js
++++ b/tests/table.test.js
+@@ -72,9 +72,11 @@ test('full table: random balls on every layer never tunnel or escape', () => {
+   const rng = NN.U.rng(4242);
+   const { w, P, T } = makeWorld();
+   const stats = installChecker(w);
++  const diverter = w.colliders.find((c) => c.id === 'diverter');
+   let n = 0;
+   for (let i = 0; i < 2500; i++) {
+     w.balls.length = 0;
++    diverter.active = i % 2 === 1;      // the top diverter post up for half the balls
+     let b;
+     if (i % 5 === 0) {
+       // start on a ramp, moving up or down it
+@@ -158,6 +160,40 @@ test('every major shot can be made from a cradled ball', () => {
+   assert(missing.length === 0, 'unreachable: ' + missing.join(', '));
+ });
+ 
++test('top diverter: raised, plunges come down into the Orion lanes; lowered, they go round', () => {
++  const tally = { up: { lanes: 0, round: 0 }, down: { lanes: 0, round: 0 } };
++  let n = 0, issues = 0;
++  for (let frac = 0.4; frac <= 1.0001; frac += 0.02) {
++    n++;
++    for (const up of [true, false]) {
++      const { w, T } = makeWorld();
++      const stats = installChecker(w);
++      w.colliders.find((c) => c.id === 'diverter').active = up;
++      const b = w.addBall(T.ballStart.x, T.ballStart.y);
++      stepFor(w, 0.3);
++      w.plungerLaunch(frac);
++      let lanes = false, round = false;
++      stepFor(w, 2.5, () => {
++        for (const e of w.events) {
++          if (e.type === 'sensor' && /^lane/.test(e.id) && e.dir === 1) lanes = true;
++          if (e.type === 'sensor' && e.id === 'loTop' && e.dir === -1) round = true;
++        }
++        w.events.length = 0;
++        if (b.state !== 'play') return false;
++      });
++      const t = tally[up ? 'up' : 'down'];
++      if (lanes) t.lanes++;
++      if (round) t.round++;
++      issues += stats.crossings + stats.inside + stats.escapes;
++    }
++  }
++  note(`${n} plunges 40-100 %: post up -> lanes ${tally.up.lanes}, round the top ${tally.up.round}; post down -> lanes ${tally.down.lanes}, round ${tally.down.round}`);
++  assert(issues === 0, issues + ' tunnelling or escape problems');
++  assert(tally.up.lanes >= n * 0.4, 'a raised post should send plunges down into the lanes');
++  assert(tally.up.round <= n * 0.25, 'a raised post should stop most plunges going round');
++  assert(tally.down.round === n, 'with the post down every plunge goes round the top');
++});
++
+ test('shots on the fly from each inlane (report)', () => {
+   for (const fid of ['L', 'R']) {
+     const tally = {};
+-- 
+2.43.0
+
