@@ -132,7 +132,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
 <div id="tuning"></div>
 <noscript>NEON NEBULA needs JavaScript turned on.</noscript>
 <script>
-/* NEON NEBULA v1.0.0-d9e67c98 - all code below is generated from src/ by tools/build.js */
+/* NEON NEBULA v1.0.0-0da6df34 - all code below is generated from src/ by tools/build.js */
 
 /* ---- src/core/settings.js ---- */
 /*
@@ -196,7 +196,8 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     plungerMaxPull: 60,        // mm of visible travel
     plungerPullSpeed: 1.6,     // fraction of full pull per second while held
     plungerMaxLaunch: 4600,    // mm/s at full pull
-    plungerMinLaunch: 500,     // mm/s at the smallest pull
+    plungerMinLaunch: 800,     // mm/s at the smallest pull (a 20 % pull just clears the lane)
+    plungerVariance: 0.03,     // a real spring never launches exactly the same: +-3 %
 
     // ---- Nudge and tilt -----------------------------------------------------
     nudgeImpulse: 330,         // mm/s added to every ball
@@ -1051,7 +1052,9 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     const frac = pl.pull / P.plungerMaxPull;
     if (frac < 0.02) { pl.pull = 0; return; }
     pl.launching = true;
-    pl.launchSpeed = P.plungerMinLaunch + (P.plungerMaxLaunch - P.plungerMinLaunch) * frac;
+    // a real spring never launches the ball exactly the same way twice
+    const v = P.plungerMinLaunch + (P.plungerMaxLaunch - P.plungerMinLaunch) * frac;
+    pl.launchSpeed = v * (1 + (this.rng() * 2 - 1) * P.plungerVariance);
     this.emit({ type: 'plungerRelease', power: frac });
   };
 
@@ -1561,6 +1564,16 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     lineSensor('roReturn', 412, 385, 463, 385, 0, 1, { actions: [{ dir: 1, do: 'wire', wire: 'wireRO', requireFlag: 'descR' }] });
     L.shots.leftOrbit = { sensor: 'loTop', dir: 1, x: 31, y: 600, ang: -60 };
     L.shots.rightOrbit = { sensor: 'roTop', dir: 1, x: 444, y: 610, ang: -120 };
+
+    // Top diverter: a rubber post that pops up against the top of the arch, above
+    // the Orion lanes. The game raises it for each plunge (Game.updateDiverter): the
+    // launched ball riding the arch clips it about 30 degrees off centre and is
+    // knocked down into the lanes and pop bumpers instead of going all the way
+    // round. It is down the rest of the time (and starts down), so orbit shots
+    // loop as before.
+    const DV = Object.assign({ x: 234, y: 17.5, r: 4 }, TW.diverter || {});
+    add(S.circle(DV.x, DV.y, DV.r, { mat: 'rubber', kind: 'post', id: 'diverter' })).active = false;
+    L.diverter = { x: DV.x, y: DV.y, r: DV.r };
 
     // -------------------------------------------------------------- ramps ---
     const RW = 22; // half width (wall centre lines); the mouth flares into a funnel
@@ -2878,10 +2891,16 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
 (function (NN) {
   'use strict';
 
+  // switch events that mean a launched ball has reached the playfield (the
+  // shooter lane and top-of-arch rollovers are still part of the plunge)
+  const SWITCH_EVENTS = { bumper: 1, sling: 1, target: 1, drop: 1, spin: 1, sensor: 1, capture: 1 };
+  const LAUNCH_SENSORS = { shooterLane: 1, orbitTop: 1 };
+
   function Game(opts) {
     opts = opts || {};
     this.P = NN.makePhysicsSettings(opts.tuning);
     this.T = NN.buildTable(this.P);
+    this.T.seed = (opts.seed || 777) + 1;   // the physics (coil and spring variance) gets its own stream
     this.inserts = NN.buildInserts(this.T);
     this.world = new NN.World(this.T, this.P);
     this.rng = NN.U.rng(opts.seed || 777);
@@ -2905,6 +2924,8 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     this.tableShake = { x: 0, y: 0, vx: 0, vy: 0 };
     this.dropColliders = {};
     for (const c of this.world.colliders) if (c.kind === 'drop') this.dropColliders[c.id] = c;
+    this.diverter = this.world.colliders.find((c) => c.id === 'diverter') || null;
+    this.launchUntil = -1;       // the top diverter stays up until then after a plunge
     this.flipperHold = { L: 0, R: 0 };
     this.rules = new NN.Rules(this);
     this.bot = null;
@@ -2942,6 +2963,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     this.slowLeft = 0;
     this.setFlippersEnabled(true);
     this.resetDrops();
+    this.launchUntil = -1;
     if (this.world.plunger) { this.world.plunger.pull = 0; this.world.plunger.pulling = false; this.world.plunger.launching = false; }
   };
 
@@ -3137,6 +3159,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     }
     if (this.state === 'bonus') this.bonusTick(dt);
     if (this.serveQueue.length) this.processServe();
+    if (this.diverter) this.updateDiverter();
     // scheduled callbacks
     if (this.scheduled.length) {
       for (let i = 0; i < this.scheduled.length; i++) {
@@ -3155,9 +3178,36 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     return !!this.scoopBall || this.mbReleasing || !!this.rules.selecting;
   };
 
+  // ------------------------------------------------------- top diverter ---
+  // The diverter post stands up while a ball waits in the shooter lane, so the
+  // plunge is knocked down into the Orion lanes and pop bumpers. Holding the left
+  // flipper keeps it down (the SUPER SKILL plunge goes all the way round). It
+  // drops as soon as the launched ball reaches the playfield, or a few seconds
+  // after the launch, so orbit shots from the flippers loop normally.
+  Game.prototype.updateDiverter = function () {
+    const d = this.diverter;
+    const live = this.state === 'playing' || this.state === 'attract';
+    const up = live && ((!!this.shooterBall() && !this.buttons.L) || this.time < this.launchUntil);
+    if (up === d.active) return;
+    if (up) {
+      // never pop up through a ball
+      for (const b of this.world.balls) {
+        if (b.state === 'play' && b.layer === 0 && Math.hypot(b.x - d.x, b.y - d.y) < d.R + b.r + 1) return;
+      }
+    }
+    d.active = up;
+    this.fx({ type: 'sound', id: 'diverter', up: up });
+    if (up) this.fx({ type: 'flash', id: 'diverter', x: d.x, y: d.y });
+  };
+
   // ------------------------------------------------------------- events ---
   Game.prototype.handleEvent = function (e) {
     const R = this.rules;
+    // the launched ball's first playfield switch ends the launch: drop the diverter
+    if (e.ball && e.ball.fresh && SWITCH_EVENTS[e.type] && !LAUNCH_SENSORS[e.id]) {
+      e.ball.fresh = false;
+      this.launchUntil = -1;
+    }
     switch (e.type) {
       case 'bumper':
         R.sw('bumper', e.id, e);
@@ -3208,6 +3258,8 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
         if (e.kind === 'post' && e.speed > 600) this.fx({ type: 'flash', id: 'post', x: e.x, y: e.y });
         break;
       case 'plungerRelease':
+        // the diverter stays up for this launch unless the left flipper is held
+        if (this.shooterBall()) this.launchUntil = this.buttons.L ? -1 : this.time + 3;
         this.fx({ type: 'sound', id: 'plungerRelease', power: e.power });
         break;
     }
@@ -4478,6 +4530,12 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     noise(t, 0.09, 0.5, { type: 'lowpass', f: 700, pan: p });
     tone('sine', 125 * vary(), t, 0.11, 0.55, { to: 55, pan: p });
     noise(t + 0.03, 0.02, 0.25, { f: 3000, pan: p });
+  };
+  // top diverter post: a coil thunk popping up, a softer drop going down
+  S.diverter = (o) => {
+    const t = A.ctx.currentTime, p = panX(234);
+    tone('sine', (o.up ? 180 : 110) * vary(), t, 0.08, o.up ? 0.4 : 0.22, { to: o.up ? 90 : 60, pan: p });
+    noise(t, 0.03, o.up ? 0.3 : 0.15, { type: 'lowpass', f: 1200, pan: p });
   };
   S.spin = () => {
     if (!allow('spin', 6, 0.012)) return;
@@ -6128,6 +6186,24 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
       c.strokeStyle = '#e8eaff'; c.lineWidth = 1.6; c.lineCap = 'round';
       c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + Math.cos(ang) * len, hy + Math.sin(ang) * len); c.stroke();
     }
+    // top diverter post: lit amber and glowing while up, a faint socket when down
+    const dv = T.landmarks.diverter, dc = g.diverter;
+    if (dv && dc) {
+      if (dc.active) {
+        const k = fx.hitGlow('diverter', 0.3);
+        c.globalCompositeOperation = 'lighter';
+        c.globalAlpha = Math.min(1, 0.7 + 0.25 * Math.sin(fx.t * 6) + 0.3 * k);
+        c.drawImage(NN.glowSprite(col.amber, 48), dv.x - 22, dv.y - 22, 44, 44);
+        c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+        c.fillStyle = col.amber;
+        c.beginPath(); c.arc(dv.x, dv.y, dv.r, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#fff6d0';
+        c.beginPath(); c.arc(dv.x, dv.y, dv.r * (0.45 + 0.3 * k), 0, Math.PI * 2); c.fill();
+      } else {
+        c.strokeStyle = 'rgba(255,178,56,0.3)'; c.lineWidth = 1;
+        c.beginPath(); c.arc(dv.x, dv.y, dv.r - 0.5, 0, Math.PI * 2); c.stroke();
+      }
+    }
     // kickback
     const kb = T.landmarks.kickback;
     const kk = fx.hitGlow('kickback', 0.3);
@@ -6866,7 +6942,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
     return '<h2>HOW TO PLAY</h2><div class="card">' +
       '<h3>CONTROLS</h3>' + ctrl +
       '<h3>SHOOT THE BLINKING ARROWS</h3><p>Lit arrows show what to shoot next. Each flipper\'s easiest shot is the ramp on its own side.</p>' +
-      '<h3>SKILL SHOT</h3><p>One Orion lane at the top is lit. Flippers move it. Plunge into the lit lane for a big bonus. A full plunge round the top, then the left ramp, is a SUPER SKILL SHOT.</p>' +
+      '<h3>SKILL SHOT</h3><p>One Orion lane at the top is lit. Flippers move it. The glowing post at the top knocks the plunge down into the lanes: land in the lit one for a big bonus. Hold the left flipper as you plunge to drop the post; the ball goes all the way round, then shoot the left ramp for a SUPER SKILL SHOT.</p>' +
       '<h3>MISSIONS</h3><p>Shoot the BLACK HOLE when MISSION is lit to start one of six timed missions (flippers choose). Hit all four PLANET targets to relight it. Finish all six for <b>SUPERNOVA</b>.</p>' +
       '<h3>NEBULA MULTIBALL</h3><p>The left ramp lights LOCK. The right ramp locks a ball in the Docking Bay. Lock two to start 3-ball multiball. Ramps score JACKPOTS, then the Black Hole scores the SUPER JACKPOT.</p>' +
       '<h3>MORE</h3><p>Major shots in a row are COMBOS. Clear the ASTEROID drop targets to light the KICKBACK. ORION lanes raise the bonus multiplier. The upper flipper shoots the COMET LANE.</p>' +
@@ -7225,6 +7301,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
           else if (id === 'kickback') fx.burst(e.x, e.y - 20, [col.lime, '#ffffff'], 24, 380);
           else if (id === 'scoop') fx.ring(e.x, e.y, col.violet, 10, 70, 0.6);
           else if (id === 'post') fx.sparks(e.x, e.y, '#ffffff', 3, 120);
+          else if (id === 'diverter') fx.ring(e.x, e.y, col.amber, 4, 16, 0.25);
           break;
         }
         case 'shake':

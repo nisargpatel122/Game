@@ -11,7 +11,10 @@ Free. Works offline. **No ads, ever.**
 
 ## Play on your phone
 
-Open **https://nisargpatel122.github.io/neon-nebula/** and tap **PLAY**.
+Open **https://nisargpatel122.github.io/neon-nebula/** and tap **PLAY**. On Android the game
+switches to full screen so the table is as big as possible; if you leave full screen, pause and
+tap **FULL SCREEN**. (iPhones don't allow full screen in the browser; add the game to your home
+screen instead.)
 
 To put it on your home screen like a normal app (it then works with no internet):
 
