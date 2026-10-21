@@ -8,7 +8,7 @@
   NN.ACHIEVEMENTS = [
     { id: 'first', name: 'FIRST CONTACT', desc: 'Play your first game', check: (g, s, life) => life.games >= 1 },
     { id: 'skill', name: 'SKILLED PILOT', desc: 'Make a skill shot', check: (g) => g.skillShots >= 1 },
-    { id: 'superskill', name: 'SUPER SKILL', desc: 'Full plunge, then the left ramp', check: (g) => g.superSkills >= 1 },
+    { id: 'superskill', name: 'SUPER SKILL', desc: 'Hold left flipper, plunge, then left ramp', check: (g) => g.superSkills >= 1 },
     { id: 'ramps10', name: 'LIFTOFF', desc: '10 ramps in one game', check: (g) => g.ramps >= 10 },
     { id: 'orbits10', name: 'ORBITAL', desc: '10 orbits in one game', check: (g) => g.orbits >= 10 },
     { id: 'comet5', name: 'COMET RIDER', desc: 'Comet Lane 5 times in one game', check: (g) => g.comets >= 5 },

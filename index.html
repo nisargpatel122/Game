@@ -132,7 +132,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
 <div id="tuning"></div>
 <noscript>NEON NEBULA needs JavaScript turned on.</noscript>
 <script>
-/* NEON NEBULA v1.0.0-0da6df34 - all code below is generated from src/ by tools/build.js */
+/* NEON NEBULA v1.0.0-34f0331b - all code below is generated from src/ by tools/build.js */
 
 /* ---- src/core/settings.js ---- */
 /*
@@ -3187,7 +3187,9 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
   Game.prototype.updateDiverter = function () {
     const d = this.diverter;
     const live = this.state === 'playing' || this.state === 'attract';
-    const up = live && ((!!this.shooterBall() && !this.buttons.L) || this.time < this.launchUntil);
+    // only for a lone plunge: in multiball it would block the loop shots of
+    // the balls already in play, so balls launched then go round as before
+    const up = live && this.world.activeBalls() <= 1 && ((!!this.shooterBall() && !this.buttons.L) || this.time < this.launchUntil);
     if (up === d.active) return;
     if (up) {
       // never pop up through a ball
@@ -4246,7 +4248,7 @@ noscript { color: #fff; display: block; padding: 40px; text-align: center; }
   NN.ACHIEVEMENTS = [
     { id: 'first', name: 'FIRST CONTACT', desc: 'Play your first game', check: (g, s, life) => life.games >= 1 },
     { id: 'skill', name: 'SKILLED PILOT', desc: 'Make a skill shot', check: (g) => g.skillShots >= 1 },
-    { id: 'superskill', name: 'SUPER SKILL', desc: 'Full plunge, then the left ramp', check: (g) => g.superSkills >= 1 },
+    { id: 'superskill', name: 'SUPER SKILL', desc: 'Hold left flipper, plunge, then left ramp', check: (g) => g.superSkills >= 1 },
     { id: 'ramps10', name: 'LIFTOFF', desc: '10 ramps in one game', check: (g) => g.ramps >= 10 },
     { id: 'orbits10', name: 'ORBITAL', desc: '10 orbits in one game', check: (g) => g.orbits >= 10 },
     { id: 'comet5', name: 'COMET RIDER', desc: 'Comet Lane 5 times in one game', check: (g) => g.comets >= 5 },

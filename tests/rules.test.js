@@ -59,21 +59,33 @@ test('top diverter: up for the plunge, down once the ball reaches the playfield'
   g.applyInput({ type: 'flip', side: 'L', down: false });
   run_(g, 0.01);
   assert(g.diverter.active, 'and it pops back up');
-  let hit = false, sw = null;
+  // where the knocked-down ball lands first is down to physics (the sweep in
+  // table.test.js covers that); here only the game logic is checked
+  const PF = { bumper: 1, sling: 1, target: 1, drop: 1, spin: 1, sensor: 1, capture: 1 };
+  let hit = false, sw = null, upAtSwitch = false;
   const orig = g.handleEvent.bind(g);
   g.handleEvent = (e) => {
     if (e.type === 'hit' && e.id === 'diverter') hit = true;
-    if (!sw && (e.type === 'bumper' || (e.type === 'sensor' && /^lane/.test(e.id)))) sw = e.type + ' ' + (e.id || '');
+    if (!sw && PF[e.type] && e.id !== 'shooterLane' && e.id !== 'orbitTop') { sw = e.type + ' ' + (e.id || ''); upAtSwitch = g.diverter.active; }
     orig(e);
   };
   g.world.plungerLaunch(1);
   run_(g, 0.15);
   assert(!g.shooterBall() && g.diverter.active, 'stays up while the plunge goes round the arch');
   for (let i = 0; i < 480 * 3 && !sw; i++) g.tick(DT);
-  assert(hit && sw, 'the plunge hit the post and came down into the lanes or bumpers (' + sw + ')');
+  assert(hit && sw && upAtSwitch, 'the plunge hit the post and reached the playfield with the post still up (' + sw + ')');
   run_(g, 0.01);
   assert(!g.diverter.active, 'down after the first playfield switch, so orbit shots loop');
   note('full plunge: post, then ' + sw);
+
+  // multiball: with another ball in play the post stays down, so that ball's
+  // loop shots are not blocked by a launch
+  const m = newGame();
+  run_(m, 0.5);
+  assert(m.diverter.active, 'post up for a lone plunge');
+  m.world.addBall(240, 600, 0, 0);
+  run_(m, 0.01);
+  assert(m.shooterBall() && !m.diverter.active, 'post down while another ball is in play');
 
   // super skill: hold the left flipper through the plunge
   const h = newGame();

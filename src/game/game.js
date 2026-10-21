@@ -305,7 +305,9 @@
   Game.prototype.updateDiverter = function () {
     const d = this.diverter;
     const live = this.state === 'playing' || this.state === 'attract';
-    const up = live && ((!!this.shooterBall() && !this.buttons.L) || this.time < this.launchUntil);
+    // only for a lone plunge: in multiball it would block the loop shots of
+    // the balls already in play, so balls launched then go round as before
+    const up = live && this.world.activeBalls() <= 1 && ((!!this.shooterBall() && !this.buttons.L) || this.time < this.launchUntil);
     if (up === d.active) return;
     if (up) {
       // never pop up through a ball
