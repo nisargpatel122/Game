@@ -1,0 +1,32 @@
+{
+  "name": "Brick Blitz",
+  "short_name": "Brick Blitz",
+  "description": "Smash bricks across 100 levels and 5 bosses. Works offline.",
+  "id": "/Game/brick-blitz/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#140733",
+  "theme_color": "#140733",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

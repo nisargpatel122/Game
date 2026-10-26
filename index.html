@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2b2f6b">
+  <title>Nisarg's Games</title>
+  <style>
+    :root { --ink: #1d2140; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #fff; background: radial-gradient(circle at 30% 10%, #4b4fb8, #2b2f6b 55%, #171a3d);
+      padding: calc(env(safe-area-inset-top) + 24px) 16px calc(env(safe-area-inset-bottom) + 32px);
+    }
+    h1 { text-align: center; margin: 4px 0 4px; font-size: 32px; }
+    p.sub { text-align: center; margin: 0 0 22px; opacity: .8; font-weight: 600; }
+    .grid { display: grid; gap: 14px; max-width: 560px; margin: 0 auto; }
+    a.game {
+      display: flex; align-items: center; gap: 16px; padding: 14px; border-radius: 22px; text-decoration: none; color: var(--ink);
+      background: #fff; box-shadow: 0 6px 0 rgba(0, 0, 0, .25);
+    }
+    a.game:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+    a.game img { width: 72px; height: 72px; border-radius: 18px; flex: none; background: #e6e8f5; }
+    a.game b { display: block; font-size: 21px; }
+    a.game span { display: block; font-size: 14px; opacity: .75; font-weight: 600; margin-top: 2px; }
+    .note { max-width: 560px; margin: 24px auto 0; font-size: 14px; line-height: 1.45; opacity: .85; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Nisarg's Games</h1>
+  <p class="sub">Each game has its own link and installs as its own app.</p>
+  <div class="grid">
+    <a class="game" href="../color-commute/"><img src="../color-commute/icons/icon-192.png" alt=""><div><b>Color Commute</b><span>Clear the parking lot, match the colors</span></div></a>
+    <a class="game" href="../neon-nebula/"><img src="../neon-nebula/icon-192.png" alt=""><div><b>Neon Nebula Pinball</b><span>Neon space pinball</span></div></a>
+    <a class="game" href="./brick-blitz/"><img src="./brick-blitz/icons/icon-192.png" alt=""><div><b>Brick Blitz</b><span>Smash bricks, beat the bosses</span></div></a>
+    <a class="game" href="./angry-flock/"><img src="./angry-flock/icons/icon-192.png" alt=""><div><b>Angry Flock</b><span>Slingshot physics fun</span></div></a>
+  </div>
+  <p class="note">To install a game, open it and tap its <b>Install app</b> button (or Chrome's &#8942; menu &rarr; <b>Add to Home screen</b>).</p>
+  <script>
+    // An old offline copy of a game that used to live at this address may still be
+    // registered here. Remove only that one registration (never the games' own).
+    if ('serviceWorker' in navigator) {
+      const here = new URL('./', location.href).href;
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const r of regs) if (r.scope === here) r.unregister();
+      }).catch(() => {});
+    }
+  </script>
+</body>
+</html>
