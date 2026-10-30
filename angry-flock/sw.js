@@ -4,7 +4,7 @@
  * from before it moved into its own folder).
  * Bump VERSION whenever any file changes so phones pick up the update. */
 const GAME_ID = 'angry-flock';
-const VERSION = 8;
+const VERSION = 9;
 const CACHE = `${GAME_ID}-v${VERSION}`;
 const ours = (k) => k.startsWith(`${GAME_ID}-v`) || k.startsWith('angryflock-');
 const FILES = [
@@ -15,6 +15,7 @@ const FILES = [
   './fonts/lilita-one.woff2',
   './js/vendor/planck.min.js',
   './js/sim.js',
+  './js/levelgen.js',
   './js/levels.js',
   './js/audio.js',
   './js/render.js',

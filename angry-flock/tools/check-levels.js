@@ -71,6 +71,17 @@ function checkStable(level) {
     if (tilt > 4) settle.push(`a piece tilted ${tilt.toFixed(1)}° while settling`);
     if (drop > 0.15) settle.push(`a piece dropped ${drop.toFixed(2)} m while settling`);
     if (slide > 0.6) settle.push(`a piece slid ${slide.toFixed(2)} m while settling`);
+  } else if (sim.blocks.length === level.blocks.length) {
+    // On round planets pieces settle into the curve a little; toppling over is not ok.
+    let tilt = 0, moved = 0;
+    sim.blocks.forEach((b, i) => {
+      const p = b.body.getPosition(), d = level.blocks[i];
+      const da = Math.abs(((b.body.getAngle() * 180 / Math.PI - (d.a || 0)) % 360 + 540) % 360 - 180);
+      tilt = Math.max(tilt, da);
+      moved = Math.max(moved, Math.hypot(p.x - d.x, p.y - d.y));
+    });
+    if (tilt > 12) settle.push(`a piece tilted ${tilt.toFixed(1)}° while settling`);
+    if (moved > 0.6) settle.push(`a piece moved ${moved.toFixed(2)} m while settling`);
   }
   const start = sim.blocks.map(b => ({ b, x: b.body.getPosition().x, y: b.body.getPosition().y }));
   const pigs0 = sim.pigs.length, blocks0 = sim.blocks.length;
@@ -145,6 +156,9 @@ function solve(level) {
   }
   return { won: best.state === 'won', score: best.score, stars: best.stars || 0, shotsUsed: shots.length, thresholds: best.starThresholds(), pct: best.demolishPct(), pigsLeft: best.pigs.map(p => p.type).join(',') || 0 };
 }
+
+module.exports = { checkStable, findOverlaps, solve };
+if (require.main !== module) return;
 
 let failures = 0;
 for (const w of WORLDS) {

@@ -4,9 +4,9 @@
  * Structures are built with small helpers so blocks stack flush and stay stable.
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./sim.js'));
-  else root.LEVELS = factory(root.Sim);
-})(typeof self !== 'undefined' ? self : this, function (Sim) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./sim.js'), require('./levelgen.js'));
+  else root.LEVELS = factory(root.Sim, root.LevelGen);
+})(typeof self !== 'undefined' ? self : this, function (Sim, LevelGen) {
   'use strict';
 
   const T = 0.22, S = 0.44, M = 0.88, L = 1.76, XL = 2.64;
@@ -868,9 +868,36 @@
   });
 
 
-  return [
+  // ---------- generated levels (js/levelgen.js) ----------
+  // Each entry is [seed, birds] (plus goal % for Demolition). The seed decides the whole
+  // structure; the bird count and goal were tuned with tools/difficulty.js, and each list
+  // is ordered from easier to harder.
+  const GEN_ISLAND = [
+  ];
+  const GEN_SPACE = [
+  ];
+  const GEN_DEMO = [
+  ];
+
+  const usedNames = new Set([...island, ...space, ...demo].map(l => l.name));
+  function genName(g) {
+    let name = g.names.find(n => !usedNames.has(n));
+    for (let k = 2; !name; k++) if (!usedNames.has(g.names[0] + ' ' + k)) name = g.names[0] + ' ' + k;
+    usedNames.add(name);
+    return name;
+  }
+  function genLevel(def, g, n) {
+    return level(Object.assign(def, { name: genName(g) }), (b, d) => { g.build(b, d); d.pref = g.pref; d.birds = g.pref.slice(0, n); });
+  }
+  GEN_ISLAND.forEach(([seed, n]) => island.push(genLevel({ id: '1-' + (island.length + 1), gen: seed }, LevelGen.islandLevel(seed), n)));
+  GEN_SPACE.forEach(([seed, n]) => space.push(genLevel({ id: '2-' + (space.length + 1), gen: seed, space: true }, LevelGen.spaceLevel(seed, onPlanet), n)));
+  GEN_DEMO.forEach(([seed, n, pct]) => demo.push(genLevel({ id: '3-' + (demo.length + 1), gen: seed, objective: { type: 'demolish', pct } }, LevelGen.demoLevel(seed), n)));
+
+  const worlds = [
     { id: 1, name: 'Pig Island', desc: 'Classic slingshot. Pop every pig!', theme: 'island', levels: island },
     { id: 2, name: 'Space Hogs', desc: 'Planets bend your shots. Use their gravity!', theme: 'space', levels: space },
     { id: 3, name: 'Demolition Crew', desc: 'No pigs, just wreck the building.', theme: 'demo', levels: demo },
   ];
+  worlds.helpers = { builder, onPlanet, level };
+  return worlds;
 });

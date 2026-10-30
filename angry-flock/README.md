@@ -6,9 +6,9 @@ A slingshot physics game in the style of Angry Birds, built as an installable we
 
 | World | Levels | Goal |
 |---|---|---|
-| **Pig Island** | 40 | The classic: knock down wood, glass and stone forts and pop every pig. Later levels add castles, bunkers, cliffs, floating rock ledges, rolling boulders and TNT stores. |
-| **Space Hogs** | 6 | Each planet pulls on anything inside its dashed circle. Curve your shots around planets. |
-| **Demolition Crew** | 26 | No pigs. Wreck at least the goal % of the building. |
+| **Pig Island** | 140 | The classic: knock down wood, glass and stone forts and pop every pig. Later levels add castles, bunkers, cliffs, floating rock ledges, rolling boulders and TNT stores. From level 41 on, whole pig towns: villages, castles, city blocks, temples, ice palaces, bunkers and lumber yards, with houses stacked on rooftops. |
+| **Space Hogs** | 26 | Each planet pulls on anything inside its dashed circle. Curve your shots around planets. |
+| **Demolition Crew** | 96 | No pigs. Wreck at least the goal % of the building. |
 
 ## Birds
 
@@ -53,12 +53,15 @@ node tools/difficulty.js 1-11 3-7   # difficulty score (0-100) from a simulated 
 
 Pig Island levels 11–40 and Demolition levels 7–26 are listed in `js/levels.js` as designs plus an order (`ISLAND_BIRDS`, `DEMO_ORDER`) that sets how many birds each level gets (and the goal % for Demolition). The numbers were tuned with `tools/difficulty.js` so each world gets steadily harder.
 
+Pig Island 41–140, Space Hogs 7–26 and Demolition 27–96 come from the level generator in `js/levelgen.js`. A seed number decides the whole level: theme, terrain, which buildings go where, which pigs hide in them, and a bird lineup that suits the materials. So each of these levels is just `[seed, birds]` (plus the goal % for Demolition) in `GEN_ISLAND`, `GEN_SPACE` and `GEN_DEMO`. The seeds were picked from a few thousand candidates that passed `tools/check-levels.js`; then the bird counts were tuned with `tools/difficulty.js` and each list sorted from easier to harder. **Any change to `levelgen.js` changes every generated level**, so after editing it, pick and tune the seeds again.
+
 Add `?level=2-3` to the URL to jump straight to a level.
 
 | File | Contents |
 |---|---|
 | `js/sim.js` | Physics and game rules: materials, damage, bird powers, explosions, scoring and planet gravity. It runs in Node too, and can snapshot and restore a game between shots. |
 | `js/levels.js` | All the levels, built with small stacking helpers. |
+| `js/levelgen.js` | The level generator: building pieces (houses, towers, keeps, bunkers, vaults, crates…), themes, terrain, pig placement and bird lineups, all driven by a seeded random number generator. |
 | `js/render.js` | All the art, drawn in code with no image files, plus destruction effects: debris, dust and screen shake. |
 | `js/audio.js` | Sound effects and music, synthesized with WebAudio. |
 | `js/main.js` | Screens, touch input, the camera and save data. |
