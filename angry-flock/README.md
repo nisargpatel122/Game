@@ -20,6 +20,8 @@ A slingshot physics game in the style of Angry Birds, built as an installable we
 | Bomb | Explodes. He also blows up on his own a moment after a hit. |
 | Matilda | Drops an exploding egg straight down. |
 | Terence | None. Big and heavy, so aim at the base. |
+| Hal | Swings back like a boomerang. Hits pigs hiding behind walls. |
+| Bubbles | Puffs up into a giant balloon that shoves everything away (and pops any pig it touches). Puffs up by himself after a hit. |
 
 A bird that touches a pig pops it instantly, however gently. TNT crates explode when hit. Helmet pigs and King Pig take more hits. Every bird you don't use is worth a 10,000-point bonus. Stars and best scores are saved on your phone.
 

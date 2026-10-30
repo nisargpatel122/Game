@@ -41,7 +41,15 @@
       tip: 'Tap mid-air to drop an explosive egg straight down.' },
     big: { r: 0.78, density: 6, vs: { stone: 1.6, wood: 1.3 }, name: 'Terence',
       tip: 'Big and heavy. Just aim at the base!' },
+    green: { r: 0.46, density: 5, vs: { wood: 1.5, glass: 1.3, stone: 0.7 }, name: 'Hal',
+      tip: 'Tap mid-air and he swings back like a boomerang. Hits pigs from behind!' },
+    orange: { r: 0.34, density: 5, vs: { glass: 1.2 }, name: 'Bubbles',
+      tip: 'Tap to puff up into a giant balloon that shoves everything away. He puffs up by himself after a hit.' },
   };
+  // Hal's boomerang turn, and Bubbles' balloon: size, then grow / hold / shrink times.
+  // Hal comes back at 40% of the speed he had when tapped, lifted a little.
+  const HAL_TURN = 0.6, HAL_BACK = 1.4, HAL_LIFT = 0.3;
+  const PUFF_R = 2.1, PUFF_GROW = 0.15, PUFF_HOLD = 1.0, PUFF_SHRINK = 0.25;
 
   const PIGS = {
     small: { r: 0.42, hp: 2.2 },
@@ -242,7 +250,7 @@
         const p = b.getPosition();
         const g = this.gravityAt(p.x, p.y);
         if (g.x || g.y) {
-          const m = b.getMass();
+          const m = b.getMass() * b.getGravityScale();
           b.applyForceToCenter(Vec2(g.x * m, g.y * m), false);
         }
       }
@@ -283,8 +291,9 @@
         filterGroupIndex: group || 0,
       });
       const ent = {
-        kind: 'bird', type, r: spec.r, body, id: nextId++,
+        kind: 'bird', type, r: spec.r, r0: spec.r, body, id: nextId++,
         t: 0, hitT: -1, slowT: 0, abilityUsed: type === 'red' || type === 'big', dead: false,
+        boomT: -1, puffT: -1,
       };
       body.setUserData(ent);
       this.projectiles.push(ent);
@@ -297,7 +306,7 @@
       const bird = this.shot.main;
       if (!bird || bird.dead || bird.abilityUsed) return false;
       const type = bird.type;
-      if (type !== 'black' && bird.hitT >= 0) return false; // must be used before impact
+      if (type !== 'black' && type !== 'orange' && bird.hitT >= 0) return false; // must be used before impact
       const b = bird.body, p = b.getPosition(), v = b.getLinearVelocity();
       bird.abilityUsed = true;
       if (type === 'blue') {
@@ -327,11 +336,53 @@
         egg.setUserData(ent);
         this.projectiles.push(ent);
         b.setLinearVelocity(Vec2(v.x * 1.3 + 6, 14));
+      } else if (type === 'green') {
+        // The turn itself happens over the next moments (see _updateShot).
+        const sp = len(v.x, v.y) || 1;
+        bird.boomT = 0;
+        bird.boomDir = { x: v.x / sp, y: v.y / sp };
+        bird.boomAcc = sp / HAL_TURN;
+      } else if (type === 'orange') {
+        this._puff(bird);
       } else {
         return false;
       }
       this.onEvent('ability', { type, x: p.x, y: p.y });
       return true;
+    }
+
+    // Bubbles puffs up: everything nearby gets shoved outwards, then the balloon itself
+    // grows into the space (see _updateShot).
+    _puff(bird) {
+      bird.abilityUsed = true;
+      bird.puffT = 0;
+      const b = bird.body, p = b.getPosition();
+      b.setGravityScale(0.15);
+      b.setLinearDamping(5);
+      const reach = PUFF_R + 1.2;
+      for (let o = this.world.getBodyList(); o; o = o.getNext()) {
+        if (!o.isDynamic() || o === b) continue;
+        const e = o.getUserData();
+        if (!e || e.dead) continue;
+        const c = o.getWorldCenter();
+        const dx = c.x - p.x, dy = c.y - p.y, d = len(dx, dy);
+        if (d > reach) continue;
+        const f = 1 - d / reach;
+        const nx = d > 0.01 ? dx / d : 0, ny = d > 0.01 ? dy / d : 1;
+        const imp = 16 * f * Math.sqrt(Math.max(0.3, o.getMass()));
+        o.applyLinearImpulse(Vec2(nx * imp, ny * imp), c, true);
+        if (e.kind === 'block') this.damageBlock(e, 10 * f, c.x, c.y, 0);
+      }
+    }
+
+    // Swap the bird's circle for one of another size. While puffed up the balloon is
+    // three times as heavy as Bubbles, so it pushes things aside rather than floating off.
+    _setBirdRadius(bird, r) {
+      const b = bird.body;
+      b.destroyFixture(b.getFixtureList());
+      const mass = BIRDS[bird.type].density * Math.PI * bird.r0 * bird.r0 * (r > bird.r0 + 0.01 ? 3 : 1);
+      b.createFixture(pl.Circle(r), { density: mass / (Math.PI * r * r), friction: 0.6, restitution: 0.3 });
+      bird.r = r;
     }
 
     _explodeBird(bird) {
@@ -579,8 +630,34 @@
             this._explodeBird(e);
             continue;
           }
+          if (e.boomT >= 0 && e.boomT < HAL_TURN && e.hitT < 0) {
+            // Hal swings back: pushed against his old heading and a little to its left (up).
+            e.boomT += STEP;
+            const d = e.boomDir, m = e.body.getMass() * e.boomAcc;
+            e.body.applyForceToCenter(Vec2((-d.x * HAL_BACK - d.y * HAL_LIFT) * m, (-d.y * HAL_BACK + d.x * HAL_LIFT) * m), true);
+          }
+          if (e.type === 'orange' && e.hitT >= 0 && !e.abilityUsed && e.t - e.hitT > 0.5) {
+            this._puff(e);
+            const p = e.body.getPosition();
+            this.onEvent('ability', { type: e.type, x: p.x, y: p.y });
+          }
+          let puffing = false;
+          if (e.puffT >= 0 && !e.puffDone) {
+            e.puffT += STEP;
+            const pt = e.puffT, r0 = e.r0;
+            const r = pt < PUFF_GROW ? r0 + (PUFF_R - r0) * pt / PUFF_GROW
+              : pt < PUFF_GROW + PUFF_HOLD ? PUFF_R
+              : Math.max(r0, PUFF_R - (PUFF_R - r0) * (pt - PUFF_GROW - PUFF_HOLD) / PUFF_SHRINK);
+            if (Math.abs(r - e.r) > 0.001) this._setBirdRadius(e, r);
+            if (pt >= PUFF_GROW + PUFF_HOLD + PUFF_SHRINK) {
+              e.puffDone = true;
+              e.body.setGravityScale(1);
+              e.body.setLinearDamping(0.4);
+            }
+            puffing = !e.puffDone;
+          }
           e.slowT = sp < 0.6 ? e.slowT + STEP : 0;
-          if ((e.hitT >= 0 && (e.slowT > 0.8 || e.t - e.hitT > 6)) || e.t > 14) this._removeProjectile(e, true);
+          if (!puffing && ((e.hitT >= 0 && (e.slowT > 0.8 || e.t - e.hitT > 6)) || e.t > 14)) this._removeProjectile(e, true);
         } else if (e.t > 6) {
           this._removeProjectile(e, true);
         }

@@ -357,7 +357,9 @@
   }
 
   // A sensible bird line-up for what the structure is made of: glass -> Blues,
-  // wood -> Chuck, stone -> Bomb/Terence, hidden pigs -> Matilda, Red as an all-rounder.
+  // wood -> Chuck, stone -> Bomb/Terence, hidden pigs -> Matilda, Hal and Bubbles,
+  // Red as an all-rounder. Nothing random is drawn after this, so changing the line-up
+  // never changes the buildings.
   function birdsFor(R, stats, firstMat) {
     const total = stats.glass + stats.wood + stats.stone + 1e-6;
     const weights = {
@@ -365,8 +367,10 @@
       yellow: 0.3 + 3 * stats.wood / total,
       black: 0.3 + 3 * stats.stone / total + 0.3 * stats.tnt,
       big: 2 * stats.stone / total,
-      white: 0.1 + 0.9 * stats.hidden,
+      white: 0.25 + 0.9 * stats.hidden,
       red: 0.9,
+      green: 0.5 + 0.6 * stats.hidden, // Hal swings round walls to pigs tucked in the back
+      orange: 0.45 + 0.5 * stats.hidden, // Bubbles shoves crowded rooms apart
     };
     const first = { glass: 'blue', wood: 'yellow', stone: stats.stone / total > 0.5 && R.chance(0.4) ? 'big' : 'black' }[firstMat] || 'red';
     const pref = [first];

@@ -100,26 +100,17 @@ function checkStable(level) {
   return { problems, pigs: pigs0, blocks: blocks0, view: sim.view, settledPigs: sim.pigs.length };
 }
 
-// Play a full sequence of shots; returns the sim at the end.
-function play(level, shots) {
-  const sim = new Sim(level);
-  for (const shot of shots) {
-    let guard = 0;
-    while (sim.state !== 'aim' && sim.state !== 'won' && sim.state !== 'lost' && guard++ < 2000) sim.step();
-    if (sim.state !== 'aim') break;
-    sim.launch(shot.vx, shot.vy);
-    let t = 0;
-    guard = 0;
-    while (sim.state === 'flying' && guard++ < 2400) {
-      sim.step();
-      t += Sim.STEP;
-      if (shot.tap != null && t >= shot.tap && !shot.tapped) { sim.ability(); shot.tapped = true; }
-    }
-    shot.tapped = false;
-    // let a pending win timer resolve
-    guard = 0;
-    while (sim.state === 'aim' && sim.winTimer >= 0 && guard++ < 300) sim.step();
+// Fire one shot and let it play out (including a pending win).
+function shoot(sim, shot) {
+  sim.launch(shot.vx, shot.vy);
+  let t = 0, tapped = false, guard = 0;
+  while (sim.state === 'flying' && guard++ < 2400) {
+    sim.step();
+    t += Sim.STEP;
+    if (shot.tap != null && t >= shot.tap && !tapped) { sim.ability(); tapped = true; }
   }
+  guard = 0;
+  while (sim.state === 'aim' && sim.winTimer >= 0 && guard++ < 300) sim.step();
   return sim;
 }
 
@@ -133,28 +124,31 @@ function evaluate(sim, level) {
 }
 
 function solve(level) {
+  // Greedy: for each bird try many random shots from where the last chosen shot left off
+  // (restored from a snapshot) and keep the best one.
   const rand = rng(12345);
-  const shots = [];
   const n = level.birds.length;
-  let best = null;
+  let snap = new Sim(level).snapshot();
+  let best = null, shotsUsed = 0;
   for (let i = 0; i < n; i++) {
     const type = level.birds[i];
-    let bestShot = null, bestVal = -Infinity, bestSim = null;
+    let bestVal = -Infinity, bestSim = null;
     for (let k = 0; k < TRIES; k++) {
       const ang = (level.space ? -50 + rand() * 120 : -5 + rand() * 75) * Math.PI / 180;
       const pow = (0.45 + rand() * 0.55) * 22;
       const canTap = !['red', 'big'].includes(type);
       const shot = { vx: Math.cos(ang) * pow, vy: Math.sin(ang) * pow, tap: canTap ? 0.3 + rand() * 1.4 : null };
-      const sim = play(level, shots.concat([shot]));
+      const sim = shoot(Sim.restore(level, snap), shot);
       const val = evaluate(sim, level);
-      if (val > bestVal) { bestVal = val; bestShot = shot; bestSim = sim; }
+      if (val > bestVal) { bestVal = val; bestSim = sim; }
       if (sim.state === 'won') break;
     }
-    shots.push(bestShot);
     best = bestSim;
-    if (best.state === 'won' || best.state === 'lost') break;
+    shotsUsed = i + 1;
+    if (best.state !== 'aim') break;
+    snap = best.snapshot();
   }
-  return { won: best.state === 'won', score: best.score, stars: best.stars || 0, shotsUsed: shots.length, thresholds: best.starThresholds(), pct: best.demolishPct(), pigsLeft: best.pigs.map(p => p.type).join(',') || 0 };
+  return { won: best.state === 'won', score: best.score, stars: best.stars || 0, shotsUsed, thresholds: best.starThresholds(), pct: best.demolishPct(), pigsLeft: best.pigs.map(p => p.type).join(',') || 0 };
 }
 
 module.exports = { checkStable, findOverlaps, solve };

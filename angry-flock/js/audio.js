@@ -93,7 +93,7 @@
           this.tone(520, 0.18, 'square', 0.06, 900, 0.02);
           break;
         case 'squawk': {
-          const f = { red: 700, blue: 1100, yellow: 900, black: 380, white: 820, big: 260 }[o.type] || 700;
+          const f = { red: 700, blue: 1100, yellow: 900, black: 380, white: 820, big: 260, green: 600, orange: 1300 }[o.type] || 700;
           this.tone(f, 0.12, 'square', 0.07, f * 1.5);
           this.tone(f * 1.4, 0.16, 'triangle', 0.06, f * 0.9, 0.1);
           break;
@@ -128,6 +128,11 @@
           break;
         case 'ability': this.tone(800, 0.16, 'sine', 0.2, 1700); this.hiss(0.15, 'highpass', 2000, 0.1); break;
         case 'boost': this.hiss(0.4, 'bandpass', 600, 0.5, 2, 3000); this.tone(400, 0.3, 'sawtooth', 0.08, 1400); break;
+        case 'boomerang':
+          for (let i = 0; i < 4; i++) this.hiss(0.12, 'bandpass', 1800 - i * 250, 0.25, 3, 900, i * 0.09);
+          this.tone(900, 0.4, 'sine', 0.08, 500);
+          break;
+        case 'inflate': this.tone(180, 0.22, 'sine', 0.35, 520); this.hiss(0.25, 'lowpass', 900, 0.3, 1, 300); this.tone(520, 0.12, 'square', 0.05, 760, 0.18); break;
         case 'poof': this.hiss(0.25, 'bandpass', 1400, 0.15, 1.5, 600); break;
         case 'birdHit': this.tone(o.type === 'big' ? 300 : 650, 0.1, 'square', 0.05, 400); break;
         case 'click': this.tone(900, 0.05, 'triangle', 0.15, 600); break;

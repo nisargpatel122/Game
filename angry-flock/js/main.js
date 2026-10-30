@@ -44,7 +44,10 @@
         G.camMode = 'auto';
         break;
       case 'ability':
-        if (d.type === 'yellow') Sfx.play('boost'); else if (d.type !== 'black') Sfx.play('ability');
+        if (d.type === 'yellow') Sfx.play('boost');
+        else if (d.type === 'green') Sfx.play('boomerang');
+        else if (d.type === 'orange') { Sfx.play('inflate'); Sfx.vibrate(30); }
+        else if (d.type !== 'black') Sfx.play('ability');
         if (d.type !== 'black') fx.feathers(d.type, d.x, d.y, 4);
         break;
       case 'birdHit':
@@ -684,8 +687,8 @@
 
   // title art
   const tb = $('title-birds');
-  for (const t of ['red', 'yellow', 'blue', 'black', 'white']) tb.appendChild(Render.birdPortrait(t, 60));
-  tb.appendChild(Render.pigPortrait('helmet', 60));
+  for (const t of ['red', 'yellow', 'blue', 'black', 'white', 'green', 'orange', 'big']) tb.appendChild(Render.birdPortrait(t, 54));
+  tb.appendChild(Render.pigPortrait('helmet', 54));
 
   resize();
   // ?level=2-3 jumps straight into a level (handy for testing)

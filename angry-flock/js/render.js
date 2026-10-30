@@ -11,6 +11,7 @@
   };
   const BIRD_COLORS = {
     red: '#d8261e', blue: '#4aa8e8', yellow: '#f7d117', black: '#2a2a2e', white: '#f4f1ea', big: '#a51b1b',
+    green: '#58b847', orange: '#f5891f',
   };
   const PLANET_COLORS = [['#9b86e0', '#5a45a3'], ['#f0a066', '#a8522b'], ['#6cc6d9', '#2f7d93'], ['#c4d36a', '#7a8a2a']];
 
@@ -77,11 +78,40 @@
     return `rgb(${f(r)},${f(g)},${f(b)})`;
   }
 
+  // Hal's big hooked beak, the shape of a boomerang.
+  function halBeak(ctx, r) {
+    ctx.strokeStyle = 'rgba(120,60,0,0.6)'; ctx.lineWidth = r * 0.05; ctx.lineJoin = 'round';
+    ctx.fillStyle = '#f5a623';
+    ctx.beginPath();
+    ctx.moveTo(0.28 * r, 0.06 * r);
+    ctx.quadraticCurveTo(1.2 * r, 0.24 * r, 1.42 * r, -0.54 * r);
+    ctx.quadraticCurveTo(1.04 * r, -0.2 * r, 0.3 * r, -0.36 * r);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,60,0,0.45)';
+    ctx.beginPath(); ctx.moveTo(0.32 * r, -0.13 * r); ctx.quadraticCurveTo(0.86 * r, -0.08 * r, 1.22 * r, -0.36 * r); ctx.stroke();
+  }
+
   function drawBird(ctx, type, r, o) {
     o = o || {};
     const closed = !!o.blink;
     const lookX = o.lookX == null ? 1 : o.lookX, lookY = o.lookY || 0;
     const c = BIRD_COLORS[type];
+    if (type === 'orange' && o.puffed) {
+      // Bubbles blown up into a balloon: same little face on a huge round body.
+      body(ctx, r, c, 'rgba(120,50,0,0.5)');
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.ellipse(-0.38 * r, 0.42 * r, 0.24 * r, 0.12 * r, 0.6, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#b8560c'; ctx.lineWidth = 0.05 * r;
+      ctx.beginPath(); ctx.arc(-0.05 * r, 1.08 * r, 0.1 * r, Math.PI, Math.PI * 2.6); ctx.stroke();
+      const f = 0.55 * r;
+      ctx.save(); ctx.translate(0.22 * r, 0.1 * r);
+      eye(ctx, 0.2 * f, 0.18 * f, 0.3 * f, lookX, lookY, closed);
+      eye(ctx, 0.78 * f, 0.16 * f, 0.28 * f, lookX, lookY, closed);
+      brows(ctx, f, 0.06 * f, 0.92 * f, 0.5 * f, '#111', 0.14);
+      beak(ctx, 0.62 * f, -0.22 * f, f, 0.5);
+      ctx.restore();
+      return;
+    }
     if (type === 'yellow') {
       ctx.fillStyle = '#222';
       ctx.beginPath(); ctx.moveTo(-0.1 * r, 1.0 * r); ctx.lineTo(-0.35 * r, 1.35 * r); ctx.lineTo(0.05 * r, 1.1 * r); ctx.fill();
@@ -117,9 +147,15 @@
       for (let i = 0; i < 3; i++) {
         ctx.beginPath(); ctx.moveTo(-0.85 * r, (-0.1 + i * 0.12) * r); ctx.lineTo(-1.35 * r, (-0.25 + i * 0.22) * r); ctx.lineTo(-0.85 * r, (0.02 + i * 0.12) * r); ctx.fill();
       }
-      ctx.fillStyle = type === 'blue' ? '#2e7fc0' : c;
-      ctx.beginPath(); ctx.ellipse(-0.05 * r, 1.0 * r, 0.12 * r, 0.3 * r, -0.4, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(0.18 * r, 0.98 * r, 0.1 * r, 0.24 * r, 0.3, 0, TAU); ctx.fill();
+      if (type === 'orange') {
+        // Bubbles' single curl
+        ctx.strokeStyle = '#b8560c'; ctx.lineWidth = 0.1 * r;
+        ctx.beginPath(); ctx.arc(-0.02 * r, 1.12 * r, 0.16 * r, Math.PI, Math.PI * 2.6); ctx.stroke();
+      } else {
+        ctx.fillStyle = type === 'blue' ? '#2e7fc0' : type === 'green' ? '#2f7d2a' : c;
+        ctx.beginPath(); ctx.ellipse(-0.05 * r, 1.0 * r, 0.12 * r, 0.3 * r, -0.4, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0.18 * r, 0.98 * r, 0.1 * r, 0.24 * r, 0.3, 0, TAU); ctx.fill();
+      }
     }
     body(ctx, r, c);
     if (type === 'black') {
@@ -130,15 +166,16 @@
       ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = r * 0.12;
       ctx.beginPath(); ctx.arc(0, -0.15 * r, 0.62 * r, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
     } else {
-      ctx.fillStyle = type === 'big' ? '#e8b49a' : (type === 'blue' ? '#cfe9fb' : '#f4dfc4');
+      ctx.fillStyle = { big: '#e8b49a', blue: '#cfe9fb', green: '#d3edb0', orange: '#ffdcaa' }[type] || '#f4dfc4';
       ctx.beginPath(); ctx.ellipse(0.12 * r, -0.5 * r, 0.62 * r, 0.42 * r, 0, 0, TAU); ctx.fill();
     }
-    const big = type === 'big';
-    eye(ctx, 0.2 * r, 0.18 * r, (big ? 0.15 : 0.22) * r, lookX, lookY, closed);
-    eye(ctx, 0.58 * r, 0.16 * r, (big ? 0.14 : 0.2) * r, lookX, lookY, closed);
+    const big = type === 'big', small = type === 'orange';
+    eye(ctx, 0.2 * r, 0.18 * r, (big ? 0.15 : small ? 0.26 : 0.22) * r, lookX, lookY, closed);
+    eye(ctx, 0.58 * r, 0.16 * r, (big ? 0.14 : small ? 0.24 : 0.2) * r, lookX, lookY, closed);
     if (type === 'blue') brows(ctx, r, 0.12 * r, 0.62 * r, 0.33 * r, '#163a5c', 0.08);
     else brows(ctx, r, 0.08 * r, 0.7 * r, big ? 0.24 * r : 0.33 * r, type === 'black' ? '#c22' : '#111', big ? 0.24 : 0.16);
-    beak(ctx, 0.55 * r, -0.12 * r, r, big ? 0.55 : 0.5);
+    if (type === 'green') halBeak(ctx, r);
+    else beak(ctx, 0.55 * r, -0.12 * r, r, big ? 0.55 : 0.5);
   }
 
   // ---------------- pigs ----------------
@@ -770,8 +807,10 @@
           ctx.beginPath(); ctx.ellipse(0, 0, e.r, e.r * 1.25, 0, 0, TAU); ctx.fill(); ctx.stroke();
         } else {
           const vel = e.body.getLinearVelocity();
-          ctx.rotate(e.hitT < 0 ? Math.atan2(vel.y, vel.x) : e.body.getAngle());
-          drawBird(ctx, e.type, e.r, { fuse: e.type === 'black' && e.hitT >= 0 && Math.sin(t * 30) > 0 });
+          const puffed = e.r > e.r0 + 0.05;
+          if (puffed) { /* the balloon stays upright */ } else if (e.boomT >= 0 && e.hitT < 0) ctx.rotate(-t * 18); // Hal spins on the way back
+          else ctx.rotate(e.hitT < 0 ? Math.atan2(vel.y, vel.x) : e.body.getAngle());
+          drawBird(ctx, e.type, e.r, { fuse: e.type === 'black' && e.hitT >= 0 && Math.sin(t * 30) > 0, puffed });
         }
         ctx.restore();
       }
