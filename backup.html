@@ -34,10 +34,10 @@
 <body>
 <main>
   <h1>Back up game progress</h1>
-  <p>Your four games save their progress in Chrome on this phone. Make a backup before you uninstall or reinstall any of them, and you can always put it back.</p>
+  <p>Your games save their progress in Chrome on each device. This page only sees the progress on <b>this</b> device, so on your phone, open it on your phone. Make a backup before you uninstall or reinstall a game, and you can always put it back.</p>
 
   <div class="card">
-    <b>Found on this phone</b>
+    <b>Found on this device</b>
     <div id="list"></div>
   </div>
 
@@ -45,7 +45,7 @@
     <b>1. Save a backup</b>
     <button class="green" id="download">Download backup file</button>
     <button class="white" id="copy">Copy backup code</button>
-    <p style="margin:10px 0 0;font-size:14px">The file goes to your phone's Downloads folder. You can also paste the copied code into a note or message to yourself.</p>
+    <p style="margin:10px 0 0;font-size:14px">The file goes to your Downloads folder. You don't need to open it: it's only for the <b>Restore from backup file</b> button below. You can also paste the copied code into a note or message to yourself.</p>
   </div>
 
   <div class="card">
@@ -115,7 +115,7 @@
     a.download = `games-backup-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    say('Backup file saved to Downloads.');
+    say('Backup saved to Downloads. Keep it there; you only need it if progress goes missing.');
   };
   $('copy').onclick = async () => {
     const text = makeBackup();
