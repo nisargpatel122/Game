@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2b2f6b">
+  <title>Back up game progress</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #fff; background: radial-gradient(circle at 30% 10%, #4b4fb8, #2b2f6b 55%, #171a3d);
+      padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 32px);
+    }
+    main { max-width: 560px; margin: 0 auto; }
+    h1 { text-align: center; margin: 4px 0 6px; font-size: 28px; }
+    p { line-height: 1.45; }
+    .card { background: #fff; color: #1d2140; border-radius: 20px; padding: 16px; margin: 14px 0; box-shadow: 0 6px 0 rgba(0, 0, 0, .25); }
+    .game { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 2px dashed #e3e5f2; font-weight: 700; gap: 10px; }
+    .game:last-child { border-bottom: 0; }
+    .ok { color: #1f8a46; } .none { color: #8a90a8; }
+    button, label.btn {
+      display: block; width: 100%; padding: 14px; margin: 10px 0 0; border: 0; border-radius: 16px; font: inherit; font-size: 18px; font-weight: 800;
+      color: #fff; background: #3d86f0; box-shadow: 0 5px 0 #2459b8; text-align: center; cursor: pointer;
+    }
+    button.green { background: #3fc46a; box-shadow: 0 5px 0 #24894a; }
+    button.white, label.btn { background: #eef0fa; color: #1d2140; box-shadow: 0 5px 0 #c3c8de; }
+    button:active, label.btn:active { transform: translateY(3px); box-shadow: none; }
+    textarea { width: 100%; height: 90px; margin-top: 10px; border-radius: 12px; border: 2px solid #d5d9ec; padding: 8px; font: 13px ui-monospace, monospace; }
+    #msg { min-height: 1.4em; font-weight: 800; text-align: center; }
+    a { color: #ffe27a; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Back up game progress</h1>
+  <p>Your four games save their progress in Chrome on this phone. Make a backup before you uninstall or reinstall any of them, and you can always put it back.</p>
+
+  <div class="card">
+    <b>Found on this phone</b>
+    <div id="list"></div>
+  </div>
+
+  <div class="card">
+    <b>1. Save a backup</b>
+    <button class="green" id="download">Download backup file</button>
+    <button class="white" id="copy">Copy backup code</button>
+    <p style="margin:10px 0 0;font-size:14px">The file goes to your phone's Downloads folder. You can also paste the copied code into a note or message to yourself.</p>
+  </div>
+
+  <div class="card">
+    <b>2. Put a backup back</b>
+    <label class="btn" for="file">Restore from backup file</label>
+    <input type="file" id="file" accept=".json,application/json,text/plain" hidden>
+    <textarea id="code" placeholder="…or paste a backup code here"></textarea>
+    <button id="restore-code">Restore from pasted code</button>
+  </div>
+
+  <p id="msg"></p>
+  <p style="text-align:center"><a href="./">&larr; Back to the games</a></p>
+</main>
+<script>
+  // Each game's saved data, recognised by the names it saves under. Only these are
+  // ever read or written here; nothing else in storage is touched.
+  const GAMES = [
+    { name: 'Color Commute', owns: (k) => k.startsWith('color-commute:'), detail: () => {
+      try { const p = JSON.parse(localStorage.getItem('color-commute:progress')); return p ? `up to level ${p.maxLevel}, ${p.coins} coins` : ''; } catch (e) { return ''; }
+    } },
+    { name: 'Neon Nebula Pinball', owns: (k) => k.startsWith('neonNebula.') },
+    { name: 'Brick Blitz', owns: (k) => k.startsWith('brickblitz-') },
+    { name: 'Angry Flock', owns: (k) => k.startsWith('angryflock-') },
+  ];
+  const ours = (k) => GAMES.some((g) => g.owns(k));
+  const $ = (id) => document.getElementById(id);
+  const say = (t) => { $('msg').textContent = t; };
+
+  function keys() {
+    const out = [];
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (ours(k)) out.push(k); } } catch (e) { /* storage blocked */ }
+    return out;
+  }
+
+  function showList() {
+    const ks = keys();
+    $('list').innerHTML = GAMES.map((g) => {
+      const n = ks.filter(g.owns).length;
+      const extra = n && g.detail ? g.detail() : '';
+      return `<div class="game"><span>${g.name}</span><span class="${n ? 'ok' : 'none'}">${n ? 'Saved progress' + (extra ? ': ' + extra : '') : 'Nothing saved yet'}</span></div>`;
+    }).join('');
+  }
+
+  function makeBackup() {
+    const data = {};
+    for (const k of keys()) data[k] = localStorage.getItem(k);
+    return JSON.stringify({ kind: 'nisargs-games-backup', version: 1, made: new Date().toISOString(), data });
+  }
+
+  function restore(text) {
+    let b;
+    try { b = JSON.parse(text.trim()); } catch (e) { say('That doesn’t look like a backup.'); return; }
+    if (!b || b.kind !== 'nisargs-games-backup' || typeof b.data !== 'object') { say('That doesn’t look like a backup.'); return; }
+    const entries = Object.entries(b.data).filter(([k, v]) => ours(k) && typeof v === 'string');
+    if (!entries.length) { say('That backup has no game progress in it.'); return; }
+    const names = GAMES.filter((g) => entries.some(([k]) => g.owns(k))).map((g) => g.name).join(', ');
+    if (!confirm(`Put back the saved progress for: ${names}?\n\nThis replaces what those games have saved on this phone right now.`)) return;
+    try { for (const [k, v] of entries) localStorage.setItem(k, v); } catch (e) { say('Could not save. Is storage blocked?'); return; }
+    showList();
+    say('Progress restored! Close and reopen the games to see it.');
+  }
+
+  $('download').onclick = () => {
+    const blob = new Blob([makeBackup()], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `games-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    say('Backup file saved to Downloads.');
+  };
+  $('copy').onclick = async () => {
+    const text = makeBackup();
+    try { await navigator.clipboard.writeText(text); say('Backup code copied. Paste it somewhere safe.'); }
+    catch (e) { $('code').value = text; $('code').select(); say('Copy the code from the box below.'); }
+  };
+  $('file').onchange = async () => { const f = $('file').files[0]; if (f) restore(await f.text()); $('file').value = ''; };
+  $('restore-code').onclick = () => restore($('code').value);
+  showList();
+</script>
+</body>
+</html>
